@@ -2,6 +2,9 @@
   "name": "hardhat-project",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.3"
+    "@openzeppelin/contracts": "^4.9.6",
+    "hardhat": "^2.22.3",
+    "prettier": "^3.2.5",
+    "prettier-plugin-solidity": "^1.3.1"
   }
 }
