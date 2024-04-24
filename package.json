@@ -4,6 +4,7 @@
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^4.9.6",
     "hardhat": "^2.22.3",
+    "hardhat-erc1820": "^0.1.0",
     "prettier": "^3.2.5",
     "prettier-plugin-solidity": "^1.3.1"
   }
