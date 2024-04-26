@@ -17,7 +17,7 @@ describe("Voltix", function () {
       const { voltix } = await loadFixture(deployVoltixFixture);
 
       expect(await voltix.name()).to.equal("Voltix Token");
-      expect(await voltix.symbol()).to.equal("VTX");
+      expect(await voltix.symbol()).to.equal("VLTX");
     });
 
     it("Should set the right owner", async function () {

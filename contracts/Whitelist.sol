@@ -103,7 +103,7 @@ contract Whitelist is Ownable {
             revert NotWhitelisted();
         }
 
-        // To-do: calculate the appropriate USDC amount for VTX
+        // To-do: calculate the appropriate USDC amount for VLTX
         // if (_contributed[to] + amount > _maxAddressCap) {
         //     revert MaxAddressCapOverflow();
         // }
