@@ -2,9 +2,11 @@
 pragma solidity ^0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
 
 contract Whitelist is Ownable {
     error NotWhitelisted();
+    error AlreadyContributed();
     error Locked();
     error NotVoltix();
     error SelfWhitelistDisabled();
@@ -15,6 +17,7 @@ contract Whitelist is Ownable {
     bool private _isSelfWhitelistDisabled;
     address private _voltix; // Voltix token contract address
     address private _uniswapContract; // Uniswap address
+    address private _oracle; // Uniswap v3 TWAP oracle
     mapping(address => bool) private _isWhitelisted;
     mapping(address => uint256) private _contributed;
 
@@ -61,6 +64,10 @@ contract Whitelist is Ownable {
         return _uniswapContract;
     }
 
+    function oracle() external view returns (address) {
+        return _oracle;
+    }
+
     function locked() external view returns (bool) {
         return _locked;
     }
@@ -84,6 +91,10 @@ contract Whitelist is Ownable {
         _isSelfWhitelistDisabled = newFlag;
     }
 
+    function setOracle(address _newOracle) external onlyOwner {
+        _oracle = _newOracle;
+    }
+
     function addWhitelistedAddress(address whitelisted) external onlyOwner {
         _isWhitelisted[whitelisted] = true;
     }
@@ -103,11 +114,16 @@ contract Whitelist is Ownable {
             revert NotWhitelisted();
         }
 
-        // To-do: calculate the appropriate USDC amount for VLTX
-        // if (_contributed[to] + amount > _maxAddressCap) {
-        //     revert MaxAddressCapOverflow();
-        // }
+        if (_contributed[to] > 0) {
+            revert AlreadyContributed();
+        }
 
-        // _contributed[to] += amount;
+        // Calculate rough USDC amount for VLTX amount
+        uint256 estimatedUSDCAmount = IOracle(_oracle).peek(amount);
+        if (estimatedUSDCAmount > _maxAddressCap) {
+            revert MaxAddressCapOverflow();
+        }
+
+        _contributed[to] = estimatedUSDCAmount;
     }
 }
