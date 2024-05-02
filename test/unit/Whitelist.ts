@@ -2,14 +2,28 @@ import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-describe("Whiteliste", function () {
+describe("Whitelist", function () {
   async function deployWhitelistFixture() {
     const [owner, otherAccount, batchedAccount, mockContract] = await ethers.getSigners();
 
     const Whitelist = await ethers.getContractFactory("Whitelist");
     const whitelist = await Whitelist.deploy();
 
-    return { whitelist, owner, otherAccount, batchedAccount, mockContract };
+    const MockOracleSuccess = await ethers.getContractFactory("MockOracleSuccess");
+    const MockOracleFail = await ethers.getContractFactory("MockOracleFail");
+
+    const mockOracleSuccess = await MockOracleSuccess.deploy();
+    const mockOracleFail = await MockOracleFail.deploy();
+
+    return {
+      whitelist,
+      mockOracleSuccess,
+      mockOracleFail,
+      owner,
+      otherAccount,
+      batchedAccount,
+      mockContract,
+    };
   }
 
   describe("Deployment", function () {
@@ -35,6 +49,13 @@ describe("Whiteliste", function () {
 
       await whitelist.setMaxAddressCap(10_000_000 * 1e6);
       expect(await whitelist.maxAddressCap()).to.equal(10_000_000 * 1e6);
+    });
+
+    it("Should set oracle contract", async function () {
+      const { whitelist, mockOracleSuccess } = await loadFixture(deployWhitelistFixture);
+
+      await whitelist.setOracle(mockOracleSuccess);
+      expect(await whitelist.oracle()).to.equal(mockOracleSuccess);
     });
 
     it("Should set voltix token", async function () {
@@ -84,6 +105,9 @@ describe("Whiteliste", function () {
         "Ownable: caller is not the owner",
       );
       await expect(whitelist.connect(otherAccount).setMaxAddressCap(10_000)).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
+      await expect(whitelist.connect(otherAccount).setOracle(mockContract)).to.be.revertedWith(
         "Ownable: caller is not the owner",
       );
       await expect(whitelist.connect(otherAccount).setVoltix(mockContract)).to.be.revertedWith(
@@ -156,6 +180,29 @@ describe("Whiteliste", function () {
       await expect(
         whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
       ).to.be.revertedWithCustomError(whitelist, "NotWhitelisted");
+    });
+
+    it("Should revert when USDC amount exceeds max address cap or already contributed", async function () {
+      const { whitelist, mockOracleFail, mockOracleSuccess, otherAccount, mockContract } =
+        await loadFixture(deployWhitelistFixture);
+
+      await whitelist.setVoltix(mockContract);
+      await whitelist.setOracle(mockOracleFail);
+      await whitelist.setLocked(false);
+      await whitelist.addWhitelistedAddress(otherAccount);
+
+      await expect(
+        whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
+      ).to.be.revertedWithCustomError(whitelist, "MaxAddressCapOverflow");
+
+      await whitelist.setOracle(mockOracleSuccess);
+      await whitelist.connect(mockContract).checkWhitelist(otherAccount, 0);
+
+      expect(await whitelist.contributed(otherAccount)).to.eq(10_000 * 1e6);
+
+      await expect(
+        whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
+      ).to.be.revertedWithCustomError(whitelist, "AlreadyContributed");
     });
   });
 });

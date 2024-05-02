@@ -68,6 +68,10 @@ contract Whitelist is Ownable {
         return _oracle;
     }
 
+    function contributed(address to) external view returns (uint256) {
+        return _contributed[to];
+    }
+
     function locked() external view returns (bool) {
         return _locked;
     }
