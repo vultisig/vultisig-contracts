@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Voltix} from "../Voltix.sol";
+import {Vultisig} from "../Vultisig.sol";
 import {IWhitelist} from "../interfaces/IWhitelist.sol";
 
-contract VoltixWhitelisted is Voltix {
+contract VultisigWhitelisted is Vultisig {
     address private _whitelistContract;
 
-    constructor(address[] memory _defaultOperators) Voltix(_defaultOperators) {}
+    constructor(address[] memory _defaultOperators) Vultisig(_defaultOperators) {}
 
     function whitelistContract() external view returns (address) {
         return _whitelistContract;

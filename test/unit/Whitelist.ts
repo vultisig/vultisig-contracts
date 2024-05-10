@@ -36,7 +36,7 @@ describe("Whitelist", function () {
   });
 
   describe("Ownable", function () {
-    // , max address cap, voltix, uniswap contract, isSelfWhitelistDisabled
+    // , max address cap, vultisig, uniswap contract, isSelfWhitelistDisabled
     it("Should set locked", async function () {
       const { whitelist } = await loadFixture(deployWhitelistFixture);
 
@@ -58,11 +58,11 @@ describe("Whitelist", function () {
       expect(await whitelist.oracle()).to.equal(mockOracleSuccess);
     });
 
-    it("Should set voltix token", async function () {
+    it("Should set vultisig token", async function () {
       const { whitelist, mockContract } = await loadFixture(deployWhitelistFixture);
 
-      await whitelist.setVoltix(mockContract.address);
-      expect(await whitelist.voltix()).to.equal(mockContract.address);
+      await whitelist.setVultisig(mockContract.address);
+      expect(await whitelist.vultisig()).to.equal(mockContract.address);
     });
 
     it("Should set uniswap contract", async function () {
@@ -110,7 +110,7 @@ describe("Whitelist", function () {
       await expect(whitelist.connect(otherAccount).setOracle(mockContract)).to.be.revertedWith(
         "Ownable: caller is not the owner",
       );
-      await expect(whitelist.connect(otherAccount).setVoltix(mockContract)).to.be.revertedWith(
+      await expect(whitelist.connect(otherAccount).setVultisig(mockContract)).to.be.revertedWith(
         "Ownable: caller is not the owner",
       );
       await expect(
@@ -158,19 +158,19 @@ describe("Whitelist", function () {
   });
 
   describe("Checkwhitelist", function () {
-    it("Should revert when called from non voltix contract", async function () {
+    it("Should revert when called from non vultisig contract", async function () {
       const { whitelist, otherAccount } = await loadFixture(deployWhitelistFixture);
 
       await expect(whitelist.checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
         whitelist,
-        "NotVoltix",
+        "NotVultisig",
       );
     });
 
     it("Should revert when locked or not whitelisted", async function () {
       const { whitelist, otherAccount, mockContract } = await loadFixture(deployWhitelistFixture);
 
-      await whitelist.setVoltix(mockContract);
+      await whitelist.setVultisig(mockContract);
 
       await expect(
         whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
@@ -186,7 +186,7 @@ describe("Whitelist", function () {
       const { whitelist, mockOracleFail, mockOracleSuccess, otherAccount, mockContract } =
         await loadFixture(deployWhitelistFixture);
 
-      await whitelist.setVoltix(mockContract);
+      await whitelist.setVultisig(mockContract);
       await whitelist.setOracle(mockOracleFail);
       await whitelist.setLocked(false);
       await whitelist.addWhitelistedAddress(otherAccount);

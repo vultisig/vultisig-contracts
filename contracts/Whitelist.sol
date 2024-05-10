@@ -8,48 +8,58 @@ contract Whitelist is Ownable {
     error NotWhitelisted();
     error AlreadyContributed();
     error Locked();
-    error NotVoltix();
+    error NotVultisig();
     error SelfWhitelistDisabled();
+    error Blacklisted();
     error MaxAddressCapOverflow();
 
     uint256 private _maxAddressCap;
     bool private _locked;
     bool private _isSelfWhitelistDisabled;
-    address private _voltix; // Voltix token contract address
+    address private _vultisig; // Vultisig token contract address
     address private _uniswapContract; // Uniswap address
     address private _oracle; // Uniswap v3 TWAP oracle
+    mapping(address => bool) private _isBlacklisted;
     mapping(address => bool) private _isWhitelisted;
     mapping(address => uint256) private _contributed;
 
+    /// @notice Set the default max address cap to 10k USDC and lock token transfers initially
     constructor() {
         _maxAddressCap = 10_000 * 1e6; // USDC decimals 6
         _locked = true; // Initially, liquidity will be locked
     }
 
-    /**
-     * @dev Check if called from voltix token contract.
-     */
-    modifier onlyVoltix() {
-        if (_msgSender() != _voltix) {
-            revert NotVoltix();
+    /// @notice Check if called from vultisig token contract.
+    modifier onlyVultisig() {
+        if (_msgSender() != _vultisig) {
+            revert NotVultisig();
         }
         _;
     }
 
+    /// @notice Self-whitelist using ETH transfer
+    /// @dev reverts if whitelist is disabled
+    /// @dev reverts if address is already blacklisted
+    /// @dev ETH will be sent back to the sender
     receive() external payable {
         if (_isSelfWhitelistDisabled) {
             revert SelfWhitelistDisabled();
+        }
+        if (_isBlacklisted[_msgSender()]) {
+            revert Blacklisted();
         }
         _isWhitelisted[_msgSender()] = true;
         payable(_msgSender()).transfer(msg.value);
     }
 
+    /// @notice Returns max address cap
     function maxAddressCap() external view returns (uint256) {
         return _maxAddressCap;
     }
 
-    function voltix() external view returns (address) {
-        return _voltix;
+    /// @notice Returns
+    function vultisig() external view returns (address) {
+        return _vultisig;
     }
 
     function isWhitelisted(address account) external view returns (bool) {
@@ -83,8 +93,8 @@ contract Whitelist is Ownable {
         _maxAddressCap = newCap;
     }
 
-    function setVoltix(address newVoltix) external onlyOwner {
-        _voltix = newVoltix;
+    function setVultisig(address newVultisig) external onlyOwner {
+        _vultisig = newVultisig;
     }
 
     function setUniswapContract(address newUniswapContract) external onlyOwner {
@@ -109,7 +119,11 @@ contract Whitelist is Ownable {
         }
     }
 
-    function checkWhitelist(address to, uint256 amount) external onlyVoltix {
+    function setBlacklisted(address blacklisted, bool flag) external onlyOwner {
+        _isBlacklisted[blacklisted] = flag;
+    }
+
+    function checkWhitelist(address to, uint256 amount) external onlyVultisig {
         if (_locked) {
             revert Locked();
         }
