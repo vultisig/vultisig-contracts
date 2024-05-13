@@ -84,7 +84,6 @@ describe("Whitelist", function () {
       const allowed = Math.floor(Math.random() * 1000);
       expect(await whitelist.allowedWhitelistIndex()).to.eq(0);
       await whitelist.setAllowedWhitelistIndex(allowed);
-      console.log({ allowed });
       expect(await whitelist.allowedWhitelistIndex()).to.eq(allowed);
     });
 
@@ -118,8 +117,7 @@ describe("Whitelist", function () {
     });
 
     it("Should revert if called from non-owner address", async function () {
-      const { whitelist, otherAccount, batchedAccount, mockContract } =
-        await loadFixture(deployWhitelistFixture);
+      const { whitelist, otherAccount, batchedAccount, mockContract } = await loadFixture(deployWhitelistFixture);
 
       await expect(whitelist.connect(otherAccount).setLocked(true)).to.be.revertedWith(
         "Ownable: caller is not the owner",
@@ -130,23 +128,23 @@ describe("Whitelist", function () {
       await expect(whitelist.connect(otherAccount).setVultisig(mockContract)).to.be.revertedWith(
         "Ownable: caller is not the owner",
       );
-      await expect(
-        whitelist.connect(otherAccount).setIsSelfWhitelistDisabled(true),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(whitelist.connect(otherAccount).setIsSelfWhitelistDisabled(true)).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
       await expect(whitelist.connect(otherAccount).setOracle(mockContract)).to.be.revertedWith(
         "Ownable: caller is not the owner",
       );
-      await expect(
-        whitelist.connect(otherAccount).setBlacklisted(mockContract, true),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(whitelist.connect(otherAccount).setBlacklisted(mockContract, true)).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
 
-      await expect(
-        whitelist.connect(otherAccount).setAllowedWhitelistIndex(100),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(whitelist.connect(otherAccount).setAllowedWhitelistIndex(100)).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
 
-      await expect(
-        whitelist.connect(otherAccount).addWhitelistedAddress(otherAccount),
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(whitelist.connect(otherAccount).addWhitelistedAddress(otherAccount)).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
       await expect(
         whitelist.connect(otherAccount).addBatchWhitelist([otherAccount, batchedAccount]),
       ).to.be.revertedWith("Ownable: caller is not the owner");
@@ -166,6 +164,14 @@ describe("Whitelist", function () {
         }),
       ).to.changeEtherBalance(otherAccount, -balanceChange);
       expect(await whitelist.whitelistIndex(otherAccount)).to.eq(1);
+      expect(
+        await otherAccount.sendTransaction({
+          to: whitelist,
+          value: ethers.parseEther("1"),
+        }),
+      ).to.changeEtherBalance(otherAccount, -balanceChange);
+      expect(await whitelist.whitelistIndex(otherAccount)).to.eq(1);
+      expect(await whitelist.whitelistCount()).to.eq(1);
     });
 
     it("Should revert if self whitelist is disabled by owner", async function () {
@@ -199,25 +205,41 @@ describe("Whitelist", function () {
     it("Should revert when called from non vultisig contract", async function () {
       const { whitelist, otherAccount } = await loadFixture(deployWhitelistFixture);
 
-      await expect(whitelist.checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
-        whitelist,
-        "NotVultisig",
-      );
+      await expect(whitelist.checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(whitelist, "NotVultisig");
     });
 
-    it("Should revert when locked or not whitelisted", async function () {
-      const { whitelist, otherAccount, mockContract } = await loadFixture(deployWhitelistFixture);
+    it("Should revert when locked, blacklisted or not whitelisted", async function () {
+      const { whitelist, otherAccount, batchedAccount, mockContract } = await loadFixture(deployWhitelistFixture);
 
       await whitelist.setVultisig(mockContract);
 
-      await expect(
-        whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
-      ).to.be.revertedWithCustomError(whitelist, "Locked");
+      await expect(whitelist.connect(mockContract).checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
+        whitelist,
+        "Locked",
+      );
 
       await whitelist.setLocked(false);
-      await expect(
-        whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
-      ).to.be.revertedWithCustomError(whitelist, "NotWhitelisted");
+      await whitelist.setBlacklisted(otherAccount, true);
+
+      await expect(whitelist.connect(mockContract).checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
+        whitelist,
+        "Blacklisted",
+      );
+
+      await whitelist.setBlacklisted(otherAccount, false);
+      await expect(whitelist.connect(mockContract).checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
+        whitelist,
+        "NotWhitelisted",
+      );
+
+      // Whitelist 2 accounts and only allow first one
+      await whitelist.addBatchWhitelist([otherAccount, batchedAccount]);
+      await whitelist.setAllowedWhitelistIndex(1);
+
+      await expect(whitelist.connect(mockContract).checkWhitelist(batchedAccount, 0)).to.be.revertedWithCustomError(
+        whitelist,
+        "NotWhitelisted",
+      );
     });
 
     it("Should revert when USDC amount exceeds max address cap or already contributed", async function () {
@@ -228,19 +250,22 @@ describe("Whitelist", function () {
       await whitelist.setOracle(mockOracleFail);
       await whitelist.setLocked(false);
       await whitelist.addWhitelistedAddress(otherAccount);
+      await whitelist.setAllowedWhitelistIndex(1);
 
-      await expect(
-        whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
-      ).to.be.revertedWithCustomError(whitelist, "MaxAddressCapOverflow");
+      await expect(whitelist.connect(mockContract).checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
+        whitelist,
+        "MaxAddressCapOverflow",
+      );
 
       await whitelist.setOracle(mockOracleSuccess);
       await whitelist.connect(mockContract).checkWhitelist(otherAccount, 0);
 
       expect(await whitelist.contributed(otherAccount)).to.eq(10_000 * 1e6);
 
-      await expect(
-        whitelist.connect(mockContract).checkWhitelist(otherAccount, 0),
-      ).to.be.revertedWithCustomError(whitelist, "AlreadyContributed");
+      await expect(whitelist.connect(mockContract).checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
+        whitelist,
+        "AlreadyContributed",
+      );
     });
   });
 });

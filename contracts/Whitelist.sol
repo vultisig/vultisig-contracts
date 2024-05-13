@@ -167,7 +167,7 @@ contract Whitelist is Ownable {
     /// @param to Recipient address
     /// @param amount Number of tokens to be transferred
     /// @dev Revert if locked, not whitelisted, blacklisted or already contributed
-    /// @dev Updated contributed amount
+    /// @dev Update contributed amount
     function checkWhitelist(address to, uint256 amount) external onlyVultisig {
         if (_locked) {
             revert Locked();
@@ -177,7 +177,7 @@ contract Whitelist is Ownable {
             revert Blacklisted();
         }
 
-        if (_whitelistIndex[to] > _allowedWhitelistIndex) {
+        if (_allowedWhitelistIndex == 0 || _whitelistIndex[to] > _allowedWhitelistIndex) {
             revert NotWhitelisted();
         }
 
