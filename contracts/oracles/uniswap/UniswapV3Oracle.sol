@@ -9,11 +9,11 @@ import {IOracle} from "../../interfaces/IOracle.sol";
  * @title UniswapV3Oracle
  */
 contract UniswapV3Oracle is IOracle {
-    address public immutable pool; // VLTX/USDC pair
-    address public immutable baseToken; // VLTX
+    address public immutable pool; // VLTI/USDC pair
+    address public immutable baseToken; // VLTI
     address public immutable USDC;
     uint32 public constant PERIOD = 30 minutes;
-    uint128 public constant BASE_AMOUNT = 1e18; // VLTX has 18 decimals
+    uint128 public constant BASE_AMOUNT = 1e18; // VLTI has 18 decimals
 
     constructor(address _pool, address _baseToken, address _USDC) {
         pool = _pool;
@@ -22,7 +22,7 @@ contract UniswapV3Oracle is IOracle {
     }
 
     function name() external view returns (string memory) {
-        return "VLTX/USDC Univ3TWAP";
+        return "VLTI/USDC Univ3TWAP";
     }
 
     function peek(uint256 baseAmount) external view returns (uint256) {

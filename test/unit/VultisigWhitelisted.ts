@@ -26,7 +26,7 @@ describe("VultisigWhitelisted", function () {
 
       await vultisig.setWhitelistContract(mockWhitelistSuccess);
 
-      expect(await vultisig.whitelistContract()).to.equal(mockWhitelistSuccess);
+      expect(await vultisig.whitelistContract()).to.eq(mockWhitelistSuccess);
     });
 
     it("Should revert if called from non-owner contract", async function () {

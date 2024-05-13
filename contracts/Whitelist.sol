@@ -17,10 +17,11 @@ contract Whitelist is Ownable {
     bool private _locked;
     bool private _isSelfWhitelistDisabled;
     address private _vultisig; // Vultisig token contract address
-    address private _uniswapContract; // Uniswap address
     address private _oracle; // Uniswap v3 TWAP oracle
+    uint256 private _whitelistCount; // Total number of whitelisted addresses
+    uint256 private _allowedWhitelistIndex; // Max index allowed
+    mapping(address => uint256) private _whitelistIndex;
     mapping(address => bool) private _isBlacklisted;
-    mapping(address => bool) private _isWhitelisted;
     mapping(address => uint256) private _contributed;
 
     /// @notice Set the default max address cap to 10k USDC and lock token transfers initially
@@ -48,7 +49,7 @@ contract Whitelist is Ownable {
         if (_isBlacklisted[_msgSender()]) {
             revert Blacklisted();
         }
-        _isWhitelisted[_msgSender()] = true;
+        _addWhitelistedAddress(_msgSender());
         payable(_msgSender()).transfer(msg.value);
     }
 
@@ -57,78 +58,126 @@ contract Whitelist is Ownable {
         return _maxAddressCap;
     }
 
-    /// @notice Returns
+    /// @notice Returns vultisig address
     function vultisig() external view returns (address) {
         return _vultisig;
     }
 
-    function isWhitelisted(address account) external view returns (bool) {
-        return _isWhitelisted[account];
+    /// @notice Returns the whitelisted index. If not whitelisted, then it will be 0
+    /// @param account The address to be checked
+    function whitelistIndex(address account) external view returns (uint256) {
+        return _whitelistIndex[account];
     }
 
+    /// @notice Returns if the account is blacklisted or not
+    /// @param account The address to be checked
+    function isBlacklisted(address account) external view returns (bool) {
+        return _isBlacklisted[account];
+    }
+
+    /// @notice Returns if self-whitelist is allowed or not
     function isSelfWhitelistDisabled() external view returns (bool) {
         return _isSelfWhitelistDisabled;
     }
 
-    function uniswapContract() external view returns (address) {
-        return _uniswapContract;
-    }
-
+    /// @notice Returns Univ3 TWAP oracle address
     function oracle() external view returns (address) {
         return _oracle;
     }
 
+    /// @notice Returns current whitelisted address count
+    function whitelistCount() external view returns (uint256) {
+        return _whitelistCount;
+    }
+
+    /// @notice Returns current allowed whitelist index
+    function allowedWhitelistIndex() external view returns (uint256) {
+        return _allowedWhitelistIndex;
+    }
+
+    /// @notice Returns contributed USDC amount for address
+    /// @param to The address to be checked
     function contributed(address to) external view returns (uint256) {
         return _contributed[to];
     }
 
+    /// @notice If token transfer is locked or not
     function locked() external view returns (bool) {
         return _locked;
     }
+
+    /// @notice Setter for locked flag
+    /// @param newLocked New flag to be set
     function setLocked(bool newLocked) external onlyOwner {
         _locked = newLocked;
     }
 
+    /// @notice Setter for max address cap
+    /// @param newCap New cap for max USDC amount
     function setMaxAddressCap(uint256 newCap) external onlyOwner {
         _maxAddressCap = newCap;
     }
 
+    /// @notice Setter for vultisig token
+    /// @param newVultisig New vultisig token address
     function setVultisig(address newVultisig) external onlyOwner {
         _vultisig = newVultisig;
     }
 
-    function setUniswapContract(address newUniswapContract) external onlyOwner {
-        _uniswapContract = newUniswapContract;
-    }
-
+    /// @notice Setter for self-whitelist period
+    /// @param newFlag New flag for self-whitelist period
     function setIsSelfWhitelistDisabled(bool newFlag) external onlyOwner {
         _isSelfWhitelistDisabled = newFlag;
     }
 
-    function setOracle(address _newOracle) external onlyOwner {
-        _oracle = _newOracle;
+    /// @notice Setter for Univ3 TWAP oracle
+    /// @param newOracle New oracle address
+    function setOracle(address newOracle) external onlyOwner {
+        _oracle = newOracle;
     }
 
-    function addWhitelistedAddress(address whitelisted) external onlyOwner {
-        _isWhitelisted[whitelisted] = true;
-    }
-
-    function addBatchWhitelist(address[] calldata whitelisted) external onlyOwner {
-        for (uint i = 0; i < whitelisted.length; i++) {
-            _isWhitelisted[whitelisted[i]] = true;
-        }
-    }
-
+    /// @notice Setter for blacklist
+    /// @param blacklisted Address to be added
+    /// @param flag New flag for address
     function setBlacklisted(address blacklisted, bool flag) external onlyOwner {
         _isBlacklisted[blacklisted] = flag;
     }
 
+    /// @notice Setter for allowed whitelist index
+    /// @param newIndex New index for allowed whitelist
+    function setAllowedWhitelistIndex(uint256 newIndex) external onlyOwner {
+        _allowedWhitelistIndex = newIndex;
+    }
+
+    /// @notice Add whitelisted address
+    /// @param whitelisted Address to be added
+    function addWhitelistedAddress(address whitelisted) external onlyOwner {
+        _addWhitelistedAddress(whitelisted);
+    }
+
+    /// @notice Add batch whitelists
+    /// @param whitelisted Array of addresses to be added
+    function addBatchWhitelist(address[] calldata whitelisted) external onlyOwner {
+        for (uint i = 0; i < whitelisted.length; i++) {
+            _addWhitelistedAddress(whitelisted[i]);
+        }
+    }
+
+    /// @notice Check if address to is eligible for whitelist
+    /// @param to Recipient address
+    /// @param amount Number of tokens to be transferred
+    /// @dev Revert if locked, not whitelisted, blacklisted or already contributed
+    /// @dev Updated contributed amount
     function checkWhitelist(address to, uint256 amount) external onlyVultisig {
         if (_locked) {
             revert Locked();
         }
 
-        if (!_isWhitelisted[to]) {
+        if (_isBlacklisted[to]) {
+            revert Blacklisted();
+        }
+
+        if (_whitelistIndex[to] > _allowedWhitelistIndex) {
             revert NotWhitelisted();
         }
 
@@ -136,12 +185,20 @@ contract Whitelist is Ownable {
             revert AlreadyContributed();
         }
 
-        // Calculate rough USDC amount for VLTX amount
+        // Calculate rough USDC amount for VLTI amount
         uint256 estimatedUSDCAmount = IOracle(_oracle).peek(amount);
         if (estimatedUSDCAmount > _maxAddressCap) {
             revert MaxAddressCapOverflow();
         }
 
         _contributed[to] = estimatedUSDCAmount;
+    }
+
+    /// @notice Internal function used for whitelisting. Only increase whitelist count if address is not whitelisted before
+    /// @param whitelisted Address to be added
+    function _addWhitelistedAddress(address whitelisted) private {
+        if (_whitelistIndex[whitelisted] == 0) {
+            _whitelistIndex[whitelisted] = ++_whitelistCount;
+        }
     }
 }

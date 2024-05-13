@@ -1,6 +1,6 @@
 import { HardhatUserConfig, vars } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "hardhat-erc1820";
+import "hardhat-erc1820"; // ERC777 is interacting with ERC1820 registry
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
