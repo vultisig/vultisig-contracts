@@ -4,6 +4,15 @@ pragma solidity ^0.8.24;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 
+/**
+ * @title The contract handles whitelist related features
+ * @notice The main functionalities are:
+ * - Self whitelist by sending ETH to this contract(only when self whitelist is allowed - controlled by _isSelfWhitelistDisabled flag)
+ * - Ownable: Add whitelisted/blacklisted addresses
+ * - Ownable: Set max USDC amount to buy(default 10k USDC)
+ * - Ownable: Set univ3 TWAP oracle
+ * - Vultisig contract `_beforeTokenTransfer` hook will call `checkWhitelist` function and this function will check if buyer is eligible
+ */
 contract Whitelist is Ownable {
     error NotWhitelisted();
     error AlreadyContributed();
@@ -13,15 +22,25 @@ contract Whitelist is Ownable {
     error Blacklisted();
     error MaxAddressCapOverflow();
 
+    /// @notice Maximum USDC amount to contribute
     uint256 private _maxAddressCap;
+    /// @notice Flag for locked period
     bool private _locked;
+    /// @notice Flag for self whitelist period
     bool private _isSelfWhitelistDisabled;
-    address private _vultisig; // Vultisig token contract address
-    address private _oracle; // Uniswap v3 TWAP oracle
-    uint256 private _whitelistCount; // Total number of whitelisted addresses
-    uint256 private _allowedWhitelistIndex; // Max index allowed
+    /// @notice Vultisig token contract address
+    address private _vultisig;
+    /// @notice Uniswap v3 TWAP oracle
+    address private _oracle;
+    /// @notice Total number of whitelisted addresses
+    uint256 private _whitelistCount;
+    /// @notice Max index allowed
+    uint256 private _allowedWhitelistIndex;
+    /// @notice Whitelist index for each whitelisted address
     mapping(address => uint256) private _whitelistIndex;
+    /// @notice Mapping for blacklisted addresses
     mapping(address => bool) private _isBlacklisted;
+    /// @notice Contributed USDC amounts
     mapping(address => uint256) private _contributed;
 
     /// @notice Set the default max address cap to 10k USDC and lock token transfers initially
