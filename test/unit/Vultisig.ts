@@ -17,7 +17,7 @@ describe("Vultisig", function () {
       const { vultisig } = await loadFixture(deployVultisigFixture);
 
       expect(await vultisig.name()).to.eq("Vultisig Token");
-      expect(await vultisig.symbol()).to.eq("VLTI");
+      expect(await vultisig.symbol()).to.eq("VULT");
     });
 
     it("Should set the right owner", async function () {

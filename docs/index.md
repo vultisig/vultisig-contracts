@@ -11,7 +11,8 @@ constructor(address[] _defaultOperators) public
 ## Whitelist
 
 The main functionalities are:
-- Self whitelist by sending ETH to this contract(only when self whitelist is allowed - controlled by _isSelfWhitelistDisabled flag)
+
+- Self whitelist by sending ETH to this contract(only when self whitelist is allowed - controlled by \_isSelfWhitelistDisabled flag)
 - Ownable: Add whitelisted/blacklisted addresses
 - Ownable: Set max USDC amount to buy(default 10k USDC)
 - Ownable: Set univ3 TWAP oracle
@@ -113,8 +114,8 @@ Returns the whitelisted index. If not whitelisted, then it will be 0
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name    | Type    | Description               |
+| ------- | ------- | ------------------------- |
 | account | address | The address to be checked |
 
 ### isBlacklisted
@@ -127,8 +128,8 @@ Returns if the account is blacklisted or not
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name    | Type    | Description               |
+| ------- | ------- | ------------------------- |
 | account | address | The address to be checked |
 
 ### isSelfWhitelistDisabled
@@ -173,9 +174,9 @@ Returns contributed USDC amount for address
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| to | address | The address to be checked |
+| Name | Type    | Description               |
+| ---- | ------- | ------------------------- |
+| to   | address | The address to be checked |
 
 ### locked
 
@@ -195,8 +196,8 @@ Setter for locked flag
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name      | Type | Description        |
+| --------- | ---- | ------------------ |
 | newLocked | bool | New flag to be set |
 
 ### setMaxAddressCap
@@ -209,8 +210,8 @@ Setter for max address cap
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name   | Type    | Description                 |
+| ------ | ------- | --------------------------- |
 | newCap | uint256 | New cap for max USDC amount |
 
 ### setVultisig
@@ -223,8 +224,8 @@ Setter for vultisig token
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name        | Type    | Description                |
+| ----------- | ------- | -------------------------- |
 | newVultisig | address | New vultisig token address |
 
 ### setIsSelfWhitelistDisabled
@@ -237,8 +238,8 @@ Setter for self-whitelist period
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name    | Type | Description                        |
+| ------- | ---- | ---------------------------------- |
 | newFlag | bool | New flag for self-whitelist period |
 
 ### setOracle
@@ -251,8 +252,8 @@ Setter for Univ3 TWAP oracle
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name      | Type    | Description        |
+| --------- | ------- | ------------------ |
 | newOracle | address | New oracle address |
 
 ### setBlacklisted
@@ -265,10 +266,10 @@ Setter for blacklist
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| blacklisted | address | Address to be added |
-| flag | bool | New flag for address |
+| Name        | Type    | Description          |
+| ----------- | ------- | -------------------- |
+| blacklisted | address | Address to be added  |
+| flag        | bool    | New flag for address |
 
 ### setAllowedWhitelistIndex
 
@@ -280,8 +281,8 @@ Setter for allowed whitelist index
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name     | Type    | Description                     |
+| -------- | ------- | ------------------------------- |
 | newIndex | uint256 | New index for allowed whitelist |
 
 ### addWhitelistedAddress
@@ -294,8 +295,8 @@ Add whitelisted address
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name        | Type    | Description         |
+| ----------- | ------- | ------------------- |
 | whitelisted | address | Address to be added |
 
 ### addBatchWhitelist
@@ -308,8 +309,8 @@ Add batch whitelists
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name        | Type      | Description                    |
+| ----------- | --------- | ------------------------------ |
 | whitelisted | address[] | Array of addresses to be added |
 
 ### checkWhitelist
@@ -325,9 +326,9 @@ Update contributed amount_
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| to | address | Recipient address |
+| Name   | Type    | Description                        |
+| ------ | ------- | ---------------------------------- |
+| to     | address | Recipient address                  |
 | amount | uint256 | Number of tokens to be transferred |
 
 ## VultisigWhitelisted
@@ -357,7 +358,7 @@ function setWhitelistContract(address newWhitelistContract) external
 
 Ownable function to set new whitelist contract address
 
-### _beforeTokenTransfer
+### \_beforeTokenTransfer
 
 ```solidity
 function _beforeTokenTransfer(address operator, address from, address to, uint256 amount) internal
@@ -391,7 +392,7 @@ function checkWhitelist(address sender, uint256 amount) external
 
 ## UniswapV3Oracle
 
-For VLTI/USDC pool, it will return TWAP price for the last 30 mins and add 5% slippage
+For VULT/USDC pool, it will return TWAP price for the last 30 mins and add 5% slippage
 
 _This price will be used in whitelist contract to calculate the USDC tokenIn amount.
 The actual amount could be different because, the ticks used at the time of purchase won't be the same as this TWAP_
@@ -410,7 +411,7 @@ TWAP period
 uint128 BASE_AMOUNT
 ```
 
-Will calculate 1 VLTI price in USDC
+Will calculate 1 VULT price in USDC
 
 ### pool
 
@@ -418,7 +419,7 @@ Will calculate 1 VLTI price in USDC
 address pool
 ```
 
-VLTI/USDC pair
+VULT/USDC pair
 
 ### baseToken
 
@@ -426,7 +427,7 @@ VLTI/USDC pair
 address baseToken
 ```
 
-VLTI token address
+VULT token address
 
 ### USDC
 
@@ -448,7 +449,7 @@ constructor(address _pool, address _baseToken, address _USDC) public
 function name() external view returns (string)
 ```
 
-Returns VLTI/USDC Univ3TWAP
+Returns VULT/USDC Univ3TWAP
 
 ### peek
 
@@ -456,7 +457,7 @@ Returns VLTI/USDC Univ3TWAP
 function peek(uint256 baseAmount) external view returns (uint256)
 ```
 
-Returns TWAP price for 1 VLTI for the last 30 mins
+Returns TWAP price for 1 VULT for the last 30 mins
 
 ## FullMath
 
@@ -476,16 +477,16 @@ _Credit to Remco Bloemen under MIT license https://xn--2-umb.com/21/muldiv_
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| a | uint256 | The multiplicand |
-| b | uint256 | The multiplier |
-| denominator | uint256 | The divisor |
+| Name        | Type    | Description      |
+| ----------- | ------- | ---------------- |
+| a           | uint256 | The multiplicand |
+| b           | uint256 | The multiplier   |
+| denominator | uint256 | The divisor      |
 
 #### Return Values
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name   | Type    | Description        |
+| ------ | ------- | ------------------ |
 | result | uint256 | The 256-bit result |
 
 ### mulDivRoundingUp
@@ -498,16 +499,16 @@ Calculates ceil(a×b÷denominator) with full precision. Throws if result overflo
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| a | uint256 | The multiplicand |
-| b | uint256 | The multiplier |
-| denominator | uint256 | The divisor |
+| Name        | Type    | Description      |
+| ----------- | ------- | ---------------- |
+| a           | uint256 | The multiplicand |
+| b           | uint256 | The multiplier   |
+| denominator | uint256 | The divisor      |
 
 #### Return Values
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name   | Type    | Description        |
+| ------ | ------- | ------------------ |
 | result | uint256 | The 256-bit result |
 
 ## OracleLibrary
@@ -524,15 +525,15 @@ Fetches time-weighted average tick using Uniswap V3 oracle
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| pool | address | Address of Uniswap V3 pool that we want to observe |
-| period | uint32 | Number of seconds in the past to start calculating time-weighted average |
+| Name   | Type    | Description                                                              |
+| ------ | ------- | ------------------------------------------------------------------------ |
+| pool   | address | Address of Uniswap V3 pool that we want to observe                       |
+| period | uint32  | Number of seconds in the past to start calculating time-weighted average |
 
 #### Return Values
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name                    | Type  | Description                                                                       |
+| ----------------------- | ----- | --------------------------------------------------------------------------------- |
 | timeWeightedAverageTick | int24 | The time-weighted average tick from (block.timestamp - period) to block.timestamp |
 
 ### getQuoteAtTick
@@ -545,17 +546,17 @@ Given a tick and a token amount, calculates the amount of token received in exch
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| tick | int24 | Tick value used to calculate the quote |
-| baseAmount | uint128 | Amount of token to be converted |
-| baseToken | address | Address of an ERC20 token contract used as the baseAmount denomination |
+| Name       | Type    | Description                                                             |
+| ---------- | ------- | ----------------------------------------------------------------------- |
+| tick       | int24   | Tick value used to calculate the quote                                  |
+| baseAmount | uint128 | Amount of token to be converted                                         |
+| baseToken  | address | Address of an ERC20 token contract used as the baseAmount denomination  |
 | quoteToken | address | Address of an ERC20 token contract used as the quoteAmount denomination |
 
 #### Return Values
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name        | Type    | Description                                               |
+| ----------- | ------- | --------------------------------------------------------- |
 | quoteAmount | uint256 | Amount of quoteToken received for baseAmount of baseToken |
 
 ## TickMath
@@ -569,7 +570,7 @@ prices between 2**-128 and 2**128
 int24 MIN_TICK
 ```
 
-_The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128_
+_The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2\*\*-128_
 
 ### MAX_TICK
 
@@ -577,7 +578,7 @@ _The minimum tick that may be passed to #getSqrtRatioAtTick computed from log ba
 int24 MAX_TICK
 ```
 
-_The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128_
+_The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2\*\*128_
 
 ### MIN_SQRT_RATIO
 
@@ -601,20 +602,20 @@ _The maximum value that can be returned from #getSqrtRatioAtTick. Equivalent to 
 function getSqrtRatioAtTick(int24 tick) internal pure returns (uint160 sqrtPriceX96)
 ```
 
-Calculates sqrt(1.0001^tick) * 2^96
+Calculates sqrt(1.0001^tick) \* 2^96
 
 _Throws if |tick| > max tick_
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name | Type  | Description                          |
+| ---- | ----- | ------------------------------------ |
 | tick | int24 | The input tick for the above formula |
 
 #### Return Values
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name         | Type    | Description                                                                                                        |
+| ------------ | ------- | ------------------------------------------------------------------------------------------------------------------ |
 | sqrtPriceX96 | uint160 | A Fixed point Q64.96 number representing the sqrt of the ratio of the two assets (token1/token0) at the given tick |
 
 ### getTickAtSqrtRatio
@@ -630,14 +631,14 @@ ever return._
 
 #### Parameters
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name         | Type    | Description                                              |
+| ------------ | ------- | -------------------------------------------------------- |
 | sqrtPriceX96 | uint160 | The sqrt ratio for which to compute the tick as a Q64.96 |
 
 #### Return Values
 
-| Name | Type | Description |
-| ---- | ---- | ----------- |
+| Name | Type  | Description                                                                    |
+| ---- | ----- | ------------------------------------------------------------------------------ |
 | tick | int24 | The greatest tick for which the ratio is less than or equal to the input ratio |
 
 ## MockOracleFail
@@ -683,4 +684,3 @@ function checkWhitelist(address sender, uint256 amount) external
 ```solidity
 function checkWhitelist(address sender, uint256 amount) external
 ```
-

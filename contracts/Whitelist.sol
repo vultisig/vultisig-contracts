@@ -204,7 +204,7 @@ contract Whitelist is Ownable {
             revert AlreadyContributed();
         }
 
-        // Calculate rough USDC amount for VLTI amount
+        // Calculate rough USDC amount for VULT amount
         uint256 estimatedUSDCAmount = IOracle(_oracle).peek(amount);
         if (estimatedUSDCAmount > _maxAddressCap) {
             revert MaxAddressCapOverflow();

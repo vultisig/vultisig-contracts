@@ -1,6 +1,6 @@
 ## UniswapV3Oracle
 
-For VLTI/USDC pool, it will return TWAP price for the last 30 mins and add 5% slippage
+For VULT/USDC pool, it will return TWAP price for the last 30 mins and add 5% slippage
 
 _This price will be used in whitelist contract to calculate the USDC tokenIn amount.
 The actual amount could be different because, the ticks used at the time of purchase won't be the same as this TWAP_
@@ -19,7 +19,7 @@ TWAP period
 uint128 BASE_AMOUNT
 ```
 
-Will calculate 1 VLTI price in USDC
+Will calculate 1 VULT price in USDC
 
 ### pool
 
@@ -27,7 +27,7 @@ Will calculate 1 VLTI price in USDC
 address pool
 ```
 
-VLTI/USDC pair
+VULT/USDC pair
 
 ### baseToken
 
@@ -35,7 +35,7 @@ VLTI/USDC pair
 address baseToken
 ```
 
-VLTI token address
+VULT token address
 
 ### USDC
 
@@ -57,7 +57,7 @@ constructor(address _pool, address _baseToken, address _USDC) public
 function name() external view returns (string)
 ```
 
-Returns VLTI/USDC Univ3TWAP
+Returns VULT/USDC Univ3TWAP
 
 ### peek
 
@@ -65,4 +65,4 @@ Returns VLTI/USDC Univ3TWAP
 function peek(uint256 baseAmount) external view returns (uint256)
 ```
 
-Returns TWAP price for 1 VLTI for the last 30 mins
+Returns TWAP price for 1 VULT for the last 30 mins
