@@ -37,9 +37,11 @@ contract UniswapV3Oracle is IOracle {
 
     /// @notice Returns TWAP price for 1 VULT for the last 30 mins
     function peek(uint256 baseAmount) external view returns (uint256) {
-        int24 tick = OracleLibrary.consult(pool, PERIOD);
+        uint32 longestPeriod = OracleLibrary.getOldestObservationSecondsAgo(pool);
+        uint32 period = PERIOD < longestPeriod ? PERIOD : longestPeriod;
+        int24 tick = OracleLibrary.consult(pool, period);
         uint256 quotedUSDCAmount = OracleLibrary.getQuoteAtTick(tick, BASE_AMOUNT, baseToken, USDC);
         // Apply 5% slippage
-        return (quotedUSDCAmount * baseAmount * 95) / 100;
+        return (quotedUSDCAmount * baseAmount * 95) / 1e20; // 100 / 1e18
     }
 }

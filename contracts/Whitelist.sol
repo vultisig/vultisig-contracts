@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
+import "hardhat/console.sol";
 
 /**
  * @title The contract handles whitelist related features
@@ -32,6 +33,12 @@ contract Whitelist is Ownable {
     address private _vultisig;
     /// @notice Uniswap v3 TWAP oracle
     address private _oracle;
+    /// @notice Uniswap v3 swap router
+    address private _swapRouter;
+    /// @notice Uniswap v3 position manager
+    address private _positionManager;
+    /// @notice Uniswap v3 pool address
+    address private _pool;
     /// @notice Total number of whitelisted addresses
     uint256 private _whitelistCount;
     /// @notice Max index allowed
@@ -104,6 +111,21 @@ contract Whitelist is Ownable {
         return _oracle;
     }
 
+    /// @notice Returns Univ3 swap router address
+    function swapRouter() external view returns (address) {
+        return _swapRouter;
+    }
+
+    /// @notice Returns Univ3 position manager address
+    function positionManager() external view returns (address) {
+        return _positionManager;
+    }
+
+    /// @notice Returns Univ3 pool address
+    function pool() external view returns (address) {
+        return _pool;
+    }
+
     /// @notice Returns current whitelisted address count
     function whitelistCount() external view returns (uint256) {
         return _whitelistCount;
@@ -155,6 +177,24 @@ contract Whitelist is Ownable {
         _oracle = newOracle;
     }
 
+    /// @notice Setter for Univ3 swap router
+    /// @param newSwapRouter New swap router address
+    function setSwapRouter(address newSwapRouter) external onlyOwner {
+        _swapRouter = newSwapRouter;
+    }
+
+    /// @notice Setter for Univ3 position manager
+    /// @param newPositionManager New position manager address
+    function setPositionManager(address newPositionManager) external onlyOwner {
+        _positionManager = newPositionManager;
+    }
+
+    /// @notice Setter for Univ3 pool
+    /// @param newPool New pool address
+    function setPool(address newPool) external onlyOwner {
+        _pool = newPool;
+    }
+
     /// @notice Setter for blacklist
     /// @param blacklisted Address to be added
     /// @param flag New flag for address
@@ -188,29 +228,34 @@ contract Whitelist is Ownable {
     /// @dev Revert if locked, not whitelisted, blacklisted or already contributed
     /// @dev Update contributed amount
     function checkWhitelist(address to, uint256 amount) external onlyVultisig {
-        if (_locked) {
-            revert Locked();
-        }
+        console.log("Transferring to %s %s tokens", to, amount);
+        if (to != _swapRouter && to != _positionManager && to != _pool) {
+            // For uniswap contracts, no limitations. We only add limitations for non uniswap contracts
+            if (_locked) {
+                revert Locked();
+            }
 
-        if (_isBlacklisted[to]) {
-            revert Blacklisted();
-        }
+            if (_isBlacklisted[to]) {
+                revert Blacklisted();
+            }
 
-        if (_allowedWhitelistIndex == 0 || _whitelistIndex[to] > _allowedWhitelistIndex) {
-            revert NotWhitelisted();
-        }
+            if (_allowedWhitelistIndex == 0 || _whitelistIndex[to] > _allowedWhitelistIndex) {
+                revert NotWhitelisted();
+            }
 
-        if (_contributed[to] > 0) {
-            revert AlreadyContributed();
-        }
+            if (_contributed[to] > 0) {
+                revert AlreadyContributed();
+            }
 
-        // Calculate rough USDC amount for VULT amount
-        uint256 estimatedUSDCAmount = IOracle(_oracle).peek(amount);
-        if (estimatedUSDCAmount > _maxAddressCap) {
-            revert MaxAddressCapOverflow();
-        }
+            // // Calculate rough USDC amount for VULT amount
+            uint256 estimatedUSDCAmount = IOracle(_oracle).peek(amount);
+            console.log("Estimated amount %s %s", estimatedUSDCAmount, _maxAddressCap);
+            if (estimatedUSDCAmount > _maxAddressCap) {
+                revert MaxAddressCapOverflow();
+            }
 
-        _contributed[to] = estimatedUSDCAmount;
+            _contributed[to] = estimatedUSDCAmount;
+        }
     }
 
     /// @notice Internal function used for whitelisting. Only increase whitelist count if address is not whitelisted before

@@ -1,115 +1,195 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
-import { VultisigWhitelisted } from "../../typechain-types";
-import IUniswapV3PoolABI from "./abis/IUniswapV3Pool.json";
-import IUniswapV3FactoryABI from "./abis/IUniswapV3Factory.json";
-import USDCABI from "./abis/USDC.json";
-import NFPMABI from "./abis/NFPM.json";
+import {
+  NonfungiblePositionManager as NonfungiblePositionManagerContract,
+  SwapRouter,
+  UniswapV3Factory,
+} from "../../typechain-types";
+import { Percent, Token } from "@uniswap/sdk-core";
+import { encodeSqrtRatioX96, nearestUsableTick, NonfungiblePositionManager, Position, Pool } from "@uniswap/v3-sdk";
 
-const FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
-const MANAGER = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
-const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-const USDC_WHALE = "0x28C6c06298d514Db089934071355E5743bf21d60";
-const USDC_AMOUNT = ethers.parseUnits("100", 6);
-const VULTISIG_AMOUNT = ethers.parseUnits("10000", 18);
+import {
+  abi as FACTORY_ABI,
+  bytecode as FACTORY_BYTECODE,
+} from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
+
+import {
+  abi as MANAGER_ABI,
+  bytecode as MANAGER_BYTECODE,
+} from "@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json";
+
+import {
+  abi as SWAP_ROUTER_ABI,
+  bytecode as SWAP_ROUTER_BYTECODE,
+} from "@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json";
+
+// Set initial price 0.01 USDC
+// const VULTISIG_AMOUNT = ethers.parseUnits("10000000", 18);
+// const USDC_AMOUNT = ethers.parseUnits("100000", 18);
+const VULTISIG_AMOUNT = ethers.parseUnits("10000000", 18);
+const USDC_AMOUNT = ethers.parseUnits("10000000", 18);
 const FEE = 3000;
 
 describe("VultisigWhitelisted with Whitelist", function () {
-  async function createPool(vultisig: VultisigWhitelisted) {
-    const [deployer] = await ethers.getSigners();
-    const factory = await ethers.getContractAt(IUniswapV3FactoryABI, FACTORY);
-    const vultisigAddress = await vultisig.getAddress();
-    const tx = await factory.createPool(USDC, vultisigAddress, FEE); // 1% fee
-    await tx.wait();
-    const poolAddress: string = await factory.getPool(USDC, vultisigAddress, FEE);
-    // Initialize
-    const poolContract = await ethers.getContractAt(IUniswapV3PoolABI, poolAddress);
-
-    // USDC token 0, Vult token 1 as
-    // 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 > 0x0D92d35D311E54aB8EEA0394d7E773Fc5144491a
-    // Set initial price as 1 VULT = 0.01 USDC
-    const txInitialize = await poolContract.initialize("79228162514264337593543950336");
-    await txInitialize.wait();
-    console.log({ poolAddress, USDC, vultisigAddress });
-    // Add liquidity
-    const nfpm = await ethers.getContractAt(NFPMABI, MANAGER, deployer);
-
-    const mintParams = {
-      token0: USDC,
-      token1: vultisigAddress,
-      fee: FEE,
-      tickLower: -887220,
-      tickUpper: 887220,
-      amount0Desired: USDC_AMOUNT,
-      amount1Desired: VULTISIG_AMOUNT,
-      amount0Min: 0,
-      amount1Min: 0,
-      recipient: deployer.address,
-      deadline: Math.floor(Date.now() / 1000) + 60 * 20,
-    };
-
-    const mintTx = await nfpm.mint(mintParams, { gasLimit: 1000000 });
-    console.log("--? minttx", mintTx);
-    await mintTx.wait();
-    console.log("Added liquidity");
-    return poolAddress;
-  }
-
   async function deployVultisigWhitelistedFixture() {
     const [owner, buyer, otherAccount] = await ethers.getSigners();
 
     const VultisigWhitelisted = await ethers.getContractFactory("VultisigWhitelisted");
     const Whitelist = await ethers.getContractFactory("Whitelist");
+    const MockUSDC = await ethers.getContractFactory("Vultisig");
     const vultisig = await VultisigWhitelisted.deploy();
     const whitelist = await Whitelist.deploy();
-
+    const mockUSDC = await MockUSDC.deploy();
     await whitelist.setVultisig(vultisig);
-    // await vultisig.setWhitelistContract(whitelist);
+    await vultisig.setWhitelistContract(whitelist);
 
-    // Transfer 100k USDC to owner address using impersonating account
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [USDC_WHALE],
-    });
-    const usdcWhale = await ethers.getSigner(USDC_WHALE);
-    const usdc = await ethers.getContractAt(USDCABI, USDC, usdcWhale);
-    const usdcOwner = await ethers.getContractAt(USDCABI, USDC, owner);
-    const transferUSDCTx = await usdc.transfer(owner.address, 1000_000_000_000n); // 1M USDC transfer
-    await transferUSDCTx.wait();
-    // Approve token transer
-    const vultisigApproveTx = await vultisig.approve(MANAGER, VULTISIG_AMOUNT);
-    await vultisigApproveTx.wait();
-    const usdcApproveTx = await usdcOwner.approve(MANAGER, USDC_AMOUNT);
-    await usdcApproveTx.wait();
+    // Transfer test tokens to other account
+    await mockUSDC.transfer(otherAccount, USDC_AMOUNT);
+
+    // Deploy uniswap v3 contracts - Uniswap V3 Factory, PositionManager, and Router
+    const UniswapV3Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
+    const factory = (await UniswapV3Factory.deploy()) as UniswapV3Factory;
+    await factory.waitForDeployment();
+    const PositionManagerFactory = await ethers.getContractFactory(MANAGER_ABI, MANAGER_BYTECODE);
+    const factoryAddress = await factory.getAddress();
+    const positionManager = (await PositionManagerFactory.deploy(
+      factoryAddress,
+      ethers.ZeroAddress,
+      ethers.ZeroAddress,
+    )) as NonfungiblePositionManagerContract;
+    await positionManager.waitForDeployment();
+    const positionManagerAddress = await positionManager.getAddress();
+
+    const RouterFactory = await ethers.getContractFactory(SWAP_ROUTER_ABI, SWAP_ROUTER_BYTECODE);
+    const router = (await RouterFactory.deploy(factoryAddress, ethers.ZeroAddress)) as SwapRouter;
+    await router.waitForDeployment();
+
+    await whitelist.setPositionManager(positionManagerAddress);
+    await whitelist.setSwapRouter(await router.getAddress());
+
+    // Create the pool
+    const tokenA = await vultisig.getAddress();
+    const tokenB = await mockUSDC.getAddress();
+
+    await factory.createPool(tokenA, tokenB, FEE);
+    const poolAddress = await factory.getPool(tokenA, tokenB, FEE);
+    expect(poolAddress).to.not.equal(ethers.ZeroAddress);
+    await whitelist.setPool(poolAddress);
+
+    // Initialize the pool
+    const pool = await ethers.getContractAt("IUniswapV3Pool", poolAddress);
+    await pool.initialize(encodeSqrtRatioX96(1, 1).toString());
+
+    // Approve the position manager to spend tokens
+    await vultisig.approve(positionManagerAddress, VULTISIG_AMOUNT);
+    await mockUSDC.approve(positionManagerAddress, USDC_AMOUNT);
 
     // Check balance
-    // console.log("--? USDC", await vultisig.balanceOf(owner), await usdc.balanceOf(owner));
-    // console.log(
-    //   "--? USDC",
-    //   await vultisig.allowance(owner.address, MANAGER),
-    //   await usdc.allowance(owner.address, MANAGER),
-    // );
-    // 100000000000000000000000000n 100000000000n
-    // 1000000000000000000000000n   10000000000n
-    // await hre.network.provider.request({
-    //   method: "hardhat_stopImpersonatingAccount",
-    //   params: [USDC_WHALE],
-    // });
+    expect(await vultisig.balanceOf(owner)).to.gt(VULTISIG_AMOUNT);
+    expect(await mockUSDC.balanceOf(owner)).to.gt(USDC_AMOUNT);
 
-    const pool = await createPool(vultisig);
-    return { vultisig, whitelist, owner, buyer, pool, otherAccount };
+    const slot = await pool.slot0();
+    const liquidity = await pool.liquidity();
+
+    const state = {
+      liquidity,
+      sqrtPriceX96: slot[0],
+      tick: slot[1],
+      observationIndex: slot[2],
+      observationCardinality: slot[3],
+      observationCardinalityNext: slot[4],
+      feeProtocol: slot[5],
+      unlocked: slot[6],
+    };
+
+    const Token1 = new Token(hre.network.config.chainId as number, tokenA, 18);
+    const Token2 = new Token(hre.network.config.chainId as number, tokenB, 18);
+
+    const configuredPool = new Pool(
+      Token1,
+      Token2,
+      FEE,
+      state.sqrtPriceX96.toString(),
+      state.liquidity.toString(),
+      Number(state.tick),
+    );
+
+    const position = Position.fromAmounts({
+      pool: configuredPool,
+      tickLower:
+        nearestUsableTick(configuredPool.tickCurrent, configuredPool.tickSpacing) - configuredPool.tickSpacing * 2,
+      tickUpper:
+        nearestUsableTick(configuredPool.tickCurrent, configuredPool.tickSpacing) + configuredPool.tickSpacing * 2,
+      amount0: VULTISIG_AMOUNT.toString(),
+      amount1: USDC_AMOUNT.toString(),
+      useFullPrecision: false,
+    });
+
+    const mintOptions = {
+      recipient: owner.address,
+      deadline: Math.floor(Date.now() / 1000) + 60 * 20,
+      slippageTolerance: new Percent(50, 10_000),
+    };
+
+    const { calldata, value } = NonfungiblePositionManager.addCallParameters(position, mintOptions);
+
+    const transaction = {
+      data: calldata,
+      to: positionManagerAddress,
+      value: value,
+      from: owner.address,
+      gasLimit: 10000000,
+    };
+    const txRes = await owner.sendTransaction(transaction);
+    await txRes.wait();
+    // Check the liquidity
+    const liquidityAfter = await pool.liquidity();
+    expect(liquidityAfter).to.be.gt(0);
+
+    // Deploy uniswap v3 oracle
+    const OracleFactory = await ethers.getContractFactory("UniswapV3Oracle");
+    const oracle = await OracleFactory.deploy(poolAddress, tokenA, tokenB);
+    await oracle.waitForDeployment();
+
+    const priceTx = await pool.increaseObservationCardinalityNext(10);
+    await priceTx.wait();
+
+    await whitelist.setOracle(oracle);
+    return { vultisig, mockUSDC, whitelist, factory, positionManager, router, owner, buyer, otherAccount };
   }
 
   describe("Transfer", function () {
     it("Should transfer integration", async function () {
-      const amount = ethers.parseEther("1000");
-      const { vultisig, owner, otherAccount } = await loadFixture(deployVultisigWhitelistedFixture);
-      expect(await vultisig.transfer(otherAccount.address, amount)).to.changeTokenBalances(
-        vultisig,
-        [owner.address, otherAccount.address],
-        [-amount, amount],
+      const amount = ethers.parseUnits("1000", 18);
+      const { vultisig, mockUSDC, whitelist, owner, router, otherAccount } = await loadFixture(
+        deployVultisigWhitelistedFixture,
       );
+      const routerAddress = await router.getAddress();
+      await mockUSDC.connect(otherAccount).approve(routerAddress, amount);
+
+      // Perform the swap
+      const swapParams = {
+        tokenIn: await mockUSDC.getAddress(),
+        tokenOut: await vultisig.getAddress(),
+        fee: FEE,
+        recipient: otherAccount.address,
+        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+        amountIn: amount,
+        amountOutMinimum: 0,
+        sqrtPriceLimitX96: 0,
+      };
+
+      // Remove locked status
+      await whitelist.setLocked(false);
+      await whitelist.setMaxAddressCap(ethers.parseUnits("10000", 18));
+      await whitelist.addWhitelistedAddress(otherAccount);
+      await whitelist.setAllowedWhitelistIndex(1);
+      await router.connect(otherAccount).exactInputSingle(swapParams);
+
+      // Check the balance of TokenB
+      const balanceB = await vultisig.balanceOf(otherAccount);
+      expect(balanceB).to.be.gt(0);
     });
   });
 });
