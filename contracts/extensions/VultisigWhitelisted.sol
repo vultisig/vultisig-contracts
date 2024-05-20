@@ -13,7 +13,7 @@ contract VultisigWhitelisted is Vultisig {
     /// @notice whitelist contract address
     address private _whitelistContract;
 
-    constructor(address[] memory _defaultOperators) Vultisig(_defaultOperators) {}
+    constructor() {}
 
     /// @notice Returns current whitelist contract address
     function whitelistContract() external view returns (address) {
@@ -27,10 +27,10 @@ contract VultisigWhitelisted is Vultisig {
 
     /// @notice Before token transfer hook
     /// @dev It will call `checkWhitelist` function and if it's succsessful, it will transfer tokens, unless revert
-    function _beforeTokenTransfer(address operator, address from, address to, uint256 amount) internal override {
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
         if (_whitelistContract != address(0)) {
             IWhitelist(_whitelistContract).checkWhitelist(to, amount);
         }
-        super._beforeTokenTransfer(operator, from, to, amount);
+        super._beforeTokenTransfer(from, to, amount);
     }
 }

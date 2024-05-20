@@ -1,21 +1,11 @@
 import { loadFixture } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
-import { TickMath, encodeSqrtRatioX96 } from "@uniswap/v3-sdk";
 import { VultisigWhitelisted } from "../../typechain-types";
 import IUniswapV3PoolABI from "./abis/IUniswapV3Pool.json";
 import IUniswapV3FactoryABI from "./abis/IUniswapV3Factory.json";
 import USDCABI from "./abis/USDC.json";
 import NFPMABI from "./abis/NFPM.json";
-
-// const SEPOLIA_ADDRESSES = {
-//   v3CoreFactoryAddress: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
-//   multicallAddress: '0xD7F33bCdb21b359c8ee6F0251d30E94832baAd07',
-//   quoterAddress: '0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3',
-//   v3MigratorAddress: '0x729004182cF005CEC8Bd85df140094b6aCbe8b15',
-//   nonfungiblePositionManagerAddress: '0x1238536071E1c677A632429e3655c799b22cDA52',
-//   tickLensAddress: '0xd7f33bcdb21b359c8ee6f0251d30e94832baad07'
-// }
 
 const FACTORY = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
 const MANAGER = "0xC36442b4a4522E871399CD717aBDD847Ab11FE88";
@@ -37,14 +27,15 @@ describe("VultisigWhitelisted with Whitelist", function () {
     const poolContract = await ethers.getContractAt(IUniswapV3PoolABI, poolAddress);
 
     // USDC token 0, Vult token 1 as
-    // 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 < 0xabebE9a2D62Af9a89E86EB208b51321e748640C3
+    // 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 > 0x0D92d35D311E54aB8EEA0394d7E773Fc5144491a
     // Set initial price as 1 VULT = 0.01 USDC
-    const txInitialize = await poolContract.initialize(encodeSqrtRatioX96(1, 1).toString());
+    const txInitialize = await poolContract.initialize("79228162514264337593543950336");
     await txInitialize.wait();
+    console.log({ poolAddress, USDC, vultisigAddress });
     // Add liquidity
     const nfpm = await ethers.getContractAt(NFPMABI, MANAGER, deployer);
 
-    const mintTx = await nfpm.mint({
+    const mintParams = {
       token0: USDC,
       token1: vultisigAddress,
       fee: FEE,
@@ -56,7 +47,9 @@ describe("VultisigWhitelisted with Whitelist", function () {
       amount1Min: 0,
       recipient: deployer.address,
       deadline: Math.floor(Date.now() / 1000) + 60 * 20,
-    });
+    };
+
+    const mintTx = await nfpm.mint(mintParams, { gasLimit: 1000000 });
     console.log("--? minttx", mintTx);
     await mintTx.wait();
     console.log("Added liquidity");
@@ -68,7 +61,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
 
     const VultisigWhitelisted = await ethers.getContractFactory("VultisigWhitelisted");
     const Whitelist = await ethers.getContractFactory("Whitelist");
-    const vultisig = await VultisigWhitelisted.deploy([]);
+    const vultisig = await VultisigWhitelisted.deploy();
     const whitelist = await Whitelist.deploy();
 
     await whitelist.setVultisig(vultisig);
@@ -99,10 +92,10 @@ describe("VultisigWhitelisted with Whitelist", function () {
     // );
     // 100000000000000000000000000n 100000000000n
     // 1000000000000000000000000n   10000000000n
-    await hre.network.provider.request({
-      method: "hardhat_stopImpersonatingAccount",
-      params: [USDC_WHALE],
-    });
+    // await hre.network.provider.request({
+    //   method: "hardhat_stopImpersonatingAccount",
+    //   params: [USDC_WHALE],
+    // });
 
     const pool = await createPool(vultisig);
     return { vultisig, whitelist, owner, buyer, pool, otherAccount };

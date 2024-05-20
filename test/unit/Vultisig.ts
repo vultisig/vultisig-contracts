@@ -7,7 +7,7 @@ describe("Vultisig", function () {
     const [owner, otherAccount] = await ethers.getSigners();
 
     const Vultisig = await ethers.getContractFactory("Vultisig");
-    const vultisig = await Vultisig.deploy([]);
+    const vultisig = await Vultisig.deploy();
 
     return { vultisig, owner, otherAccount };
   }
