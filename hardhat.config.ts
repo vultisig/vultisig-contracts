@@ -8,6 +8,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: "https://eth-mainnet.g.alchemy.com/v2/" + vars.get("VULTISIG_ALCHEMY_KEY"),
+        blockNumber: 19383515,
       },
     },
   },
