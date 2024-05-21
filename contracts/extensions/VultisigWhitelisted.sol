@@ -27,7 +27,7 @@ contract VultisigWhitelisted is Vultisig {
     /// @dev It will call `checkWhitelist` function and if it's succsessful, it will transfer tokens, unless revert
     /// @dev If sent from owner which has initial minted amount, then just transfer the tokens. Especially for Uniswap v3 liquidity provide.
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        if (_whitelistContract != address(0) && from != owner()) {
+        if (_whitelistContract != address(0)) {
             IWhitelist(_whitelistContract).checkWhitelist(to, amount);
         }
         super._beforeTokenTransfer(from, to, amount);
