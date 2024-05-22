@@ -144,7 +144,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
     expect(liquidityAfter).to.be.gt(0);
 
     // Check pool balance
-    console.log("-> check liquidity", await mockUSDC.balanceOf(poolAddress), await vultisig.balanceOf(poolAddress));
+    // console.log("-> check liquidity", await mockUSDC.balanceOf(poolAddress), await vultisig.balanceOf(poolAddress));
 
     // Deploy uniswap v3 oracle
     const OracleFactory = await ethers.getContractFactory("UniswapV3Oracle");
@@ -156,40 +156,68 @@ describe("VultisigWhitelisted with Whitelist", function () {
 
     await whitelist.setOracle(oracle);
 
+    // Remove locked status
+    await whitelist.setLocked(false);
+    await whitelist.addBatchWhitelist([buyer, otherAccount]);
+    await whitelist.setAllowedWhitelistIndex(2);
+
     return { vultisig, mockUSDC, whitelist, factory, positionManager, router, owner, buyer, otherAccount };
   }
 
   describe("Transfer", function () {
-    it("Should transfer integration", async function () {
+    it("Should buy tokens via uniswap", async function () {
       const amount = ethers.parseUnits("10564", 6);
-      const { vultisig, mockUSDC, whitelist, owner, router, otherAccount } = await loadFixture(
+      const limitAmount = ethers.parseUnits("10580", 6);
+      const { vultisig, mockUSDC, whitelist, router, buyer, otherAccount } = await loadFixture(
         deployVultisigWhitelistedFixture,
       );
       const routerAddress = await router.getAddress();
-      await mockUSDC.connect(otherAccount).approve(routerAddress, amount);
+
+      await mockUSDC.connect(buyer).approve(routerAddress, limitAmount);
+      await mockUSDC.connect(otherAccount).approve(routerAddress, limitAmount);
 
       // Perform the swap
-      const swapParams = {
+      const defaultSwapParams = {
         tokenIn: await mockUSDC.getAddress(),
         tokenOut: await vultisig.getAddress(),
         fee: FEE,
-        recipient: otherAccount.address,
-        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
-        amountIn: amount,
+        recipient: buyer.address,
         amountOutMinimum: 0,
         sqrtPriceLimitX96: 0,
       };
+      await expect(
+        router.connect(buyer).exactInputSingle({
+          ...defaultSwapParams,
+          deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+          amountIn: limitAmount,
+        }),
+      ).to.be.revertedWith("TF");
 
-      // Remove locked status
-      await whitelist.setLocked(false);
-      await whitelist.setMaxAddressCap(ethers.parseUnits("10000", 6));
-      await whitelist.addWhitelistedAddress(otherAccount);
-      await whitelist.setAllowedWhitelistIndex(1);
-      await router.connect(otherAccount).exactInputSingle(swapParams);
+      await router.connect(buyer).exactInputSingle({
+        ...defaultSwapParams,
+        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+        amountIn: amount,
+      });
 
-      // Check the balance of TokenB
-      const balanceB = await vultisig.balanceOf(otherAccount);
-      expect(balanceB).to.be.gt(0);
+      expect(await whitelist.contributed(buyer)).to.eq("9999289836");
+
+      // Should fail when already contributed
+      await expect(
+        router.connect(buyer).exactInputSingle({
+          ...defaultSwapParams,
+          deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+          amountIn: amount,
+        }),
+      ).to.be.revertedWith("TF");
+
+      await router.connect(otherAccount).exactInputSingle({
+        ...defaultSwapParams,
+        recipient: otherAccount.address,
+        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+        amountIn: amount,
+      });
+
+      expect(await whitelist.contributed(otherAccount)).to.eq("9989496636");
     });
   });
 });
