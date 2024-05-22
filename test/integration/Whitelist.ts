@@ -199,7 +199,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
         amountIn: amount,
       });
 
-      expect(await whitelist.contributed(buyer)).to.eq("9999289836");
+      expect(await whitelist.contributed(buyer)).to.eq("9999289836"); // This is deterministic because of the initial liquidity and price configured in the fixture setup
 
       // Should fail when already contributed
       await expect(
@@ -217,7 +217,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
         amountIn: amount,
       });
 
-      expect(await whitelist.contributed(otherAccount)).to.eq("9989496636");
+      expect(await whitelist.contributed(otherAccount)).to.eq("9989496636"); // This is deterministic, same as the 1st swap
     });
   });
 });
