@@ -3,7 +3,6 @@ pragma solidity ^0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
-import "hardhat/console.sol";
 
 /**
  * @title The contract handles whitelist related features
@@ -202,7 +201,6 @@ contract Whitelist is Ownable {
     /// @dev Revert if locked, not whitelisted, blacklisted or already contributed
     /// @dev Update contributed amount
     function checkWhitelist(address to, uint256 amount) external onlyVultisig {
-        console.log("Transferring to %s %s tokens", to, amount);
         if (to != _pool) {
             // For uniswap contracts, no limitations. We only add limitations for non uniswap contracts
             if (_locked) {
@@ -223,7 +221,6 @@ contract Whitelist is Ownable {
 
             // // Calculate rough USDC amount for VULT amount
             uint256 estimatedUSDCAmount = IOracle(_oracle).peek(amount);
-            console.log("Estimated amount %s %s", estimatedUSDCAmount, _maxAddressCap);
             if (estimatedUSDCAmount > _maxAddressCap) {
                 revert MaxAddressCapOverflow();
             }
