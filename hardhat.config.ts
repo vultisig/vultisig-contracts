@@ -7,10 +7,12 @@ const config: HardhatUserConfig = {
   networks: {
     sepolia: {
       url: `https://eth-sepolia.g.alchemy.com/v2/${vars.get("VULTISIG_ALCHEMY_KEY")}`,
+      chainId: 11155111,
       accounts: [vars.get("DEPLOYER_KEY")],
     },
     mainnet: {
       url: `https://eth-mainnet.g.alchemy.com/v2/${vars.get("VULTISIG_ALCHEMY_MAINNET_KEY")}`,
+      chainId: 1,
       accounts: [vars.get("DEPLOYER_KEY")],
     },
   },

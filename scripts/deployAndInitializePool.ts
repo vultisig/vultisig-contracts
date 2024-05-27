@@ -1,20 +1,14 @@
 import fs from "fs";
 import hre, { ethers } from "hardhat";
 import { abi as FACTORY_ABI } from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
-import { abi as MANAGER_ABI } from "@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json";
-import { encodeSqrtRatioX96, nearestUsableTick, NonfungiblePositionManager, Position, Pool } from "@uniswap/v3-sdk";
-import { Percent, Token } from "@uniswap/sdk-core";
-import { NonfungiblePositionManager as NonfungiblePositionManagerContract, UniswapV3Factory } from "../typechain-types";
+import { encodeSqrtRatioX96 } from "@uniswap/v3-sdk";
+import { UniswapV3Factory } from "../typechain-types";
 import { UNISWAP, USDC } from "./consts";
 
-// Set initial price 0.01 USDC
-const USDC_AMOUNT = ethers.parseUnits("100000", 6);
-const VULTISIG_AMOUNT = ethers.parseUnits("10000000", 18);
 const FEE = 10000; // 1% fee
 
 async function main() {
   const network = hre.network.name as "mainnet" | "sepolia";
-  const [owner, buyer, otherAccount] = await ethers.getSigners();
 
   const VultisigWhitelisted = await ethers.getContractFactory("VultisigWhitelisted");
   const Whitelist = await ethers.getContractFactory("Whitelist");
