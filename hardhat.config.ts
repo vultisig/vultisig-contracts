@@ -4,6 +4,16 @@ import "hardhat-erc1820"; // ERC777 is interacting with ERC1820 registry
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
+  networks: {
+    sepolia: {
+      url: `https://eth-sepolia.g.alchemy.com/v2/${vars.get("VULTISIG_ALCHEMY_KEY")}`,
+      accounts: [vars.get("DEPLOYER_KEY")],
+    },
+    mainnet: {
+      url: `https://eth-mainnet.g.alchemy.com/v2/${vars.get("VULTISIG_ALCHEMY_MAINNET_KEY")}`,
+      accounts: [vars.get("DEPLOYER_KEY")],
+    },
+  },
   typechain: {
     externalArtifacts: [
       "node_modules/@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json",
