@@ -7,32 +7,32 @@ import {IOracle} from "../../interfaces/IOracle.sol";
 
 /**
  * @title UniswapV3Oracle
- * @notice For VULT/USDC pool, it will return TWAP price for the last 30 mins and add 5% slippage
- * @dev This price will be used in whitelist contract to calculate the USDC tokenIn amount.
+ * @notice For VULT/ETH pool, it will return TWAP price for the last 30 mins and add 5% slippage
+ * @dev This price will be used in whitelist contract to calculate the ETH tokenIn amount.
  * The actual amount could be different because, the ticks used at the time of purchase won't be the same as this TWAP
  */
 contract UniswapV3Oracle is IOracle {
     /// @notice TWAP period
     uint32 public constant PERIOD = 30 minutes;
-    /// @notice Will calculate 1 VULT price in USDC
+    /// @notice Will calculate 1 VULT price in ETH
     uint128 public constant BASE_AMOUNT = 1e18; // VULT has 18 decimals
 
-    /// @notice VULT/USDC pair
+    /// @notice VULT/WETH pair
     address public immutable pool;
     /// @notice VULT token address
     address public immutable baseToken;
-    /// @notice USDC token address
-    address public immutable USDC;
+    /// @notice WETH token address
+    address public immutable WETH;
 
-    constructor(address _pool, address _baseToken, address _USDC) {
+    constructor(address _pool, address _baseToken, address _WETH) {
         pool = _pool;
         baseToken = _baseToken;
-        USDC = _USDC;
+        WETH = _WETH;
     }
 
-    /// @notice Returns VULT/USDC Univ3TWAP
-    function name() external view returns (string memory) {
-        return "VULT/USDC Univ3TWAP";
+    /// @notice Returns VULT/WETH Univ3TWAP
+    function name() external pure returns (string memory) {
+        return "VULT/WETH Univ3TWAP";
     }
 
     /// @notice Returns TWAP price for 1 VULT for the last 30 mins
@@ -40,8 +40,8 @@ contract UniswapV3Oracle is IOracle {
         uint32 longestPeriod = OracleLibrary.getOldestObservationSecondsAgo(pool);
         uint32 period = PERIOD < longestPeriod ? PERIOD : longestPeriod;
         int24 tick = OracleLibrary.consult(pool, period);
-        uint256 quotedUSDCAmount = OracleLibrary.getQuoteAtTick(tick, BASE_AMOUNT, baseToken, USDC);
+        uint256 quotedWETHAmount = OracleLibrary.getQuoteAtTick(tick, BASE_AMOUNT, baseToken, WETH);
         // Apply 5% slippage
-        return (quotedUSDCAmount * baseAmount * 95) / 1e20; // 100 / 1e18
+        return (quotedWETHAmount * baseAmount * 95) / 1e20; // 100 / 1e18
     }
 }
