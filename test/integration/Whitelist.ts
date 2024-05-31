@@ -24,8 +24,8 @@ import {
   bytecode as SWAP_ROUTER_BYTECODE,
 } from "@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json";
 
-// Set initial price 0.01 USDC
-const USDC_AMOUNT = ethers.parseUnits("100000", 6);
+// Set initial price 0.01 USD -> which is around 0.0000026 ETH(assuming ETH price is 3.8k)
+const ETH_AMOUNT = ethers.parseEther("26");
 const VULTISIG_AMOUNT = ethers.parseUnits("10000000", 18);
 const FEE = 3000;
 
@@ -35,18 +35,18 @@ describe("VultisigWhitelisted with Whitelist", function () {
 
     const VultisigWhitelisted = await ethers.getContractFactory("VultisigWhitelisted");
     const Whitelist = await ethers.getContractFactory("Whitelist");
-    const MockUSDC = await ethers.getContractFactory("MockUSDC");
+    const WETH = await ethers.getContractFactory("WETH9");
 
     const vultisig = await VultisigWhitelisted.deploy();
     const whitelist = await Whitelist.deploy();
-    const mockUSDC = await MockUSDC.deploy();
+    const mockWETH = await WETH.deploy();
 
     await whitelist.setVultisig(vultisig);
     await vultisig.setWhitelistContract(whitelist);
 
     // Transfer test tokens to other account
-    await mockUSDC.transfer(buyer, USDC_AMOUNT);
-    await mockUSDC.transfer(otherAccount, USDC_AMOUNT);
+    await mockWETH.transfer(buyer, ETH_AMOUNT);
+    await mockWETH.transfer(otherAccount, ETH_AMOUNT);
 
     // Deploy uniswap v3 contracts - Uniswap V3 Factory, PositionManager, and Router
     const UniswapV3Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
@@ -67,7 +67,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
     await router.waitForDeployment();
 
     // Create the pool
-    const token0 = await mockUSDC.getAddress();
+    const token0 = await mockWETH.getAddress();
     const token1 = await vultisig.getAddress();
 
     await factory.createPool(token0, token1, FEE);
@@ -83,7 +83,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
 
     // Approve the position manager to spend tokens
     await vultisig.approve(positionManagerAddress, VULTISIG_AMOUNT);
-    await mockUSDC.approve(positionManagerAddress, USDC_AMOUNT);
+    await mockWETH.approve(positionManagerAddress, ETH_AMOUNT);
 
     const slot = await pool.slot0();
     const liquidity = await pool.liquidity();
@@ -117,7 +117,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
         nearestUsableTick(configuredPool.tickCurrent, configuredPool.tickSpacing) - configuredPool.tickSpacing * 2,
       tickUpper:
         nearestUsableTick(configuredPool.tickCurrent, configuredPool.tickSpacing) + configuredPool.tickSpacing * 2,
-      amount0: USDC_AMOUNT.toString(),
+      amount0: ETH_AMOUNT.toString(),
       amount1: VULTISIG_AMOUNT.toString(),
       useFullPrecision: false,
     });
@@ -161,7 +161,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
     await whitelist.addBatchWhitelist([buyer, otherAccount]);
     await whitelist.setAllowedWhitelistIndex(2);
 
-    return { vultisig, mockUSDC, whitelist, factory, positionManager, router, owner, buyer, otherAccount };
+    return { vultisig, mockUSDC: mockWETH, whitelist, factory, positionManager, router, owner, buyer, otherAccount };
   }
 
   describe("Transfer", function () {

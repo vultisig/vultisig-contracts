@@ -8,6 +8,6 @@ contract MockOracleSuccess is IOracle {
         return "VULT/ETH Univ3TWAP";
     }
     function peek(uint256 baseAmount) external view returns (uint256) {
-        return 3 ether;
+        return 1.5 ether;
     }
 }

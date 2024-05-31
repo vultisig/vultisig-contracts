@@ -15,7 +15,6 @@ import {IOracle} from "./interfaces/IOracle.sol";
  */
 contract Whitelist is Ownable {
     error NotWhitelisted();
-    error AlreadyContributed();
     error Locked();
     error NotVultisig();
     error SelfWhitelistDisabled();

@@ -30,7 +30,7 @@ describe("Whitelist", function () {
     it("Should set max address cap, locked, isSelfWhitelistDisabled", async function () {
       const { whitelist } = await loadFixture(deployWhitelistFixture);
 
-      expect(await whitelist.maxAddressCap()).to.eq(10_000 * 1e6);
+      expect(await whitelist.maxAddressCap()).to.eq(ethers.parseEther("3"));
       expect(await whitelist.locked()).to.eq(true);
     });
   });
@@ -242,7 +242,7 @@ describe("Whitelist", function () {
       );
     });
 
-    it("Should revert when USDC amount exceeds max address cap or already contributed", async function () {
+    it("Should revert when ETH amount exceeds max address cap or already contributed", async function () {
       const { whitelist, mockOracleFail, mockOracleSuccess, otherAccount, mockContract } =
         await loadFixture(deployWhitelistFixture);
 
@@ -259,12 +259,14 @@ describe("Whitelist", function () {
 
       await whitelist.setOracle(mockOracleSuccess);
       await whitelist.connect(mockContract).checkWhitelist(otherAccount, 0);
+      expect(await whitelist.contributed(otherAccount)).to.eq(ethers.parseEther("1.5"));
 
-      expect(await whitelist.contributed(otherAccount)).to.eq(10_000 * 1e6);
+      await whitelist.connect(mockContract).checkWhitelist(otherAccount, 0);
+      expect(await whitelist.contributed(otherAccount)).to.eq(ethers.parseEther("3"));
 
       await expect(whitelist.connect(mockContract).checkWhitelist(otherAccount, 0)).to.be.revertedWithCustomError(
         whitelist,
-        "AlreadyContributed",
+        "MaxAddressCapOverflow",
       );
     });
   });
