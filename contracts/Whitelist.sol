@@ -195,13 +195,14 @@ contract Whitelist is Ownable {
     }
 
     /// @notice Check if address to is eligible for whitelist
+    /// @param from sender address
     /// @param to Recipient address
     /// @param amount Number of tokens to be transferred
     /// @dev Revert if locked, not whitelisted, blacklisted or already contributed
     /// @dev Update contributed amount
-    function checkWhitelist(address to, uint256 amount) external onlyVultisig {
-        if (to != _pool) {
-            // For uniswap pool contract, no limitations. We only add limitations for non uniswap contracts
+    function checkWhitelist(address from, address to, uint256 amount) external onlyVultisig {
+        if (from == _pool) {
+            // We only add limitations for initial buy actions via uniswap v3 pool
             if (_locked) {
                 revert Locked();
             }
