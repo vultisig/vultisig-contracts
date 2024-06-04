@@ -9,20 +9,19 @@ import {IOracle} from "./interfaces/IOracle.sol";
  * @notice The main functionalities are:
  * - Self whitelist by sending ETH to this contract(only when self whitelist is allowed - controlled by _isSelfWhitelistDisabled flag)
  * - Ownable: Add whitelisted/blacklisted addresses
- * - Ownable: Set max USDC amount to buy(default 10k USDC)
+ * - Ownable: Set max ETH amount to buy(default 3 ETH)
  * - Ownable: Set univ3 TWAP oracle
  * - Vultisig contract `_beforeTokenTransfer` hook will call `checkWhitelist` function and this function will check if buyer is eligible
  */
 contract Whitelist is Ownable {
     error NotWhitelisted();
-    error AlreadyContributed();
     error Locked();
     error NotVultisig();
     error SelfWhitelistDisabled();
     error Blacklisted();
     error MaxAddressCapOverflow();
 
-    /// @notice Maximum USDC amount to contribute
+    /// @notice Maximum ETH amount to contribute
     uint256 private _maxAddressCap;
     /// @notice Flag for locked period
     bool private _locked;
@@ -42,12 +41,12 @@ contract Whitelist is Ownable {
     mapping(address => uint256) private _whitelistIndex;
     /// @notice Mapping for blacklisted addresses
     mapping(address => bool) private _isBlacklisted;
-    /// @notice Contributed USDC amounts
+    /// @notice Contributed ETH amounts
     mapping(address => uint256) private _contributed;
 
-    /// @notice Set the default max address cap to 10k USDC and lock token transfers initially
+    /// @notice Set the default max address cap to 3 ETH and lock token transfers initially
     constructor() {
-        _maxAddressCap = 10_000 * 1e6; // USDC decimals 6
+        _maxAddressCap = 3 ether;
         _locked = true; // Initially, liquidity will be locked
     }
 
@@ -121,7 +120,7 @@ contract Whitelist is Ownable {
         return _allowedWhitelistIndex;
     }
 
-    /// @notice Returns contributed USDC amount for address
+    /// @notice Returns contributed ETH amount for address
     /// @param to The address to be checked
     function contributed(address to) external view returns (uint256) {
         return _contributed[to];
@@ -139,7 +138,7 @@ contract Whitelist is Ownable {
     }
 
     /// @notice Setter for max address cap
-    /// @param newCap New cap for max USDC amount
+    /// @param newCap New cap for max ETH amount
     function setMaxAddressCap(uint256 newCap) external onlyOwner {
         _maxAddressCap = newCap;
     }
@@ -196,13 +195,16 @@ contract Whitelist is Ownable {
     }
 
     /// @notice Check if address to is eligible for whitelist
-    /// @param to Recipient address
+    /// @param from sender address
+    /// @param to recipient address
     /// @param amount Number of tokens to be transferred
-    /// @dev Revert if locked, not whitelisted, blacklisted or already contributed
+    /// @dev Check WL should be applied only
+    /// @dev Revert if locked, not whitelisted, blacklisted or already contributed more than capped amount
     /// @dev Update contributed amount
-    function checkWhitelist(address to, uint256 amount) external onlyVultisig {
-        if (to != _pool) {
-            // For uniswap contracts, no limitations. We only add limitations for non uniswap contracts
+    function checkWhitelist(address from, address to, uint256 amount) external onlyVultisig {
+        if (from == _pool && to != owner()) {
+            // We only add limitations for buy actions via uniswap v3 pool
+            // Still need to ignore WL check if it's owner related actions
             if (_locked) {
                 revert Locked();
             }
@@ -215,17 +217,13 @@ contract Whitelist is Ownable {
                 revert NotWhitelisted();
             }
 
-            if (_contributed[to] > 0) {
-                revert AlreadyContributed();
-            }
-
-            // // Calculate rough USDC amount for VULT amount
-            uint256 estimatedUSDCAmount = IOracle(_oracle).peek(amount);
-            if (estimatedUSDCAmount > _maxAddressCap) {
+            // // Calculate rough ETH amount for VULT amount
+            uint256 estimatedETHAmount = IOracle(_oracle).peek(amount);
+            if (_contributed[to] + estimatedETHAmount > _maxAddressCap) {
                 revert MaxAddressCapOverflow();
             }
 
-            _contributed[to] = estimatedUSDCAmount;
+            _contributed[to] += estimatedETHAmount;
         }
     }
 

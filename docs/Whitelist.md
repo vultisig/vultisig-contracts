@@ -4,7 +4,7 @@ The main functionalities are:
 
 - Self whitelist by sending ETH to this contract(only when self whitelist is allowed - controlled by \_isSelfWhitelistDisabled flag)
 - Ownable: Add whitelisted/blacklisted addresses
-- Ownable: Set max USDC amount to buy(default 10k USDC)
+- Ownable: Set max USDC amount to buy(default 3 ETH)
 - Ownable: Set univ3 TWAP oracle
 - Vultisig contract `_beforeTokenTransfer` hook will call `checkWhitelist` function and this function will check if buyer is eligible
 

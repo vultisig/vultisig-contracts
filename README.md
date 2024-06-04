@@ -1,15 +1,14 @@
 # Solidity contracts
 
-Vultisig token will be initially listed on UniswapV3(VULT/USDC pool).
+Vultisig token will be initially listed on UniswapV3(VULT/ETH pool).
 `Whitelist` contract will handle the initial whitelist launch and after this period, we will set `whitelist` contract address in Vultisig contract back to address(0) so tokens will be transferred without any restrictions.
 In `whitelist` contract, there's `checkWhitelist` function which checks if:
 
-- If `to` address is uniswap v3 pool which holds liquidity, then skip below validation logic
+- If `from` address is uniswap v3 pool which holds liquidity, then it means, this transfer is the `buy` action. We will apply the following WL logic. But if `to` address is `owner` address, then still ignore. Because `owner` has exclusive access like increase/decrease liquidity as well as collecting fees.
 - Token purchase is locked or not
 - Buyer is blacklisted or not
 - Buyer whitelist index is within allowed index range(starting from 1 and within 1 ~ allowedWhitelistIndex - inclusive)
-- Buyer already bought or not
-- USDC amount is greater than max address cap(default 10k) or not
+- ETH amount is greater than max address cap(default 3 ETH) or not
 
 Whitelist contract owner can:
 
@@ -73,7 +72,7 @@ The main functionalities are:
 
 - Self whitelist by sending ETH to this contract(only when self whitelist is allowed - controlled by \_isSelfWhitelistDisabled flag)
 - Ownable: Add whitelisted/blacklisted addresses
-- Ownable: Set max USDC amount to buy(default 10k USDC)
+- Ownable: Set max ETH amount to buy(default 3 ETH)
 - Ownable: Set univ3 TWAP oracle
 - Vultisig contract `_beforeTokenTransfer` hook will call `checkWhitelist` function and this function will check if buyer is eligible
 
@@ -127,7 +126,7 @@ error Blacklisted()
 
 ### MaxAddressCapOverflow
 
-Error returned when buying with more than 10k USDC amount.
+Error returned when buying with more than 3 ETH amount.
 
 ```solidity
 error MaxAddressCapOverflow()
@@ -139,7 +138,7 @@ error MaxAddressCapOverflow()
 constructor() public
 ```
 
-Set the default max address cap to 10k USDC and lock token transfers initially
+Set the default max address cap to 3 ETH and lock token transfers initially
 
 ### onlyVultisig
 
@@ -243,7 +242,7 @@ Returns current allowed whitelist index
 function contributed(address to) external view returns (uint256)
 ```
 
-Returns contributed USDC amount for address
+Returns contributed ETH amount for address
 
 #### Parameters
 
@@ -283,9 +282,9 @@ Setter for max address cap
 
 #### Parameters
 
-| Name   | Type    | Description                 |
-| ------ | ------- | --------------------------- |
-| newCap | uint256 | New cap for max USDC amount |
+| Name   | Type    | Description                |
+| ------ | ------- | -------------------------- |
+| newCap | uint256 | New cap for max ETH amount |
 
 ### setVultisig
 
@@ -428,9 +427,9 @@ function checkWhitelist(address sender, uint256 amount) external
 
 ## UniswapV3Oracle contract
 
-For VULT/USDC pool, it will return TWAP price for the last 30 mins and add 5% slippage
+For VULT/ETH pool, it will return TWAP price for the last 30 mins and add 5% slippage
 
-_This price will be used in whitelist contract to calculate the USDC tokenIn amount.
+_This price will be used in whitelist contract to calculate the ETH tokenIn amount.
 The actual amount could be different because, the ticks used at the time of purchase won't be the same as this TWAP_
 
 ### PERIOD
@@ -447,7 +446,7 @@ TWAP period
 uint128 BASE_AMOUNT
 ```
 
-Will calculate 1 VULT price in USDC
+Will calculate 1 VULT price in WETH
 
 ### pool
 
@@ -455,7 +454,7 @@ Will calculate 1 VULT price in USDC
 address pool
 ```
 
-VULT/USDC pair
+VULT/WETH pair
 
 ### baseToken
 
@@ -465,18 +464,18 @@ address baseToken
 
 VULT token address
 
-### USDC
+### WETH
 
 ```solidity
-address USDC
+address WETH
 ```
 
-USDC token address
+WETH token address
 
 ### constructor
 
 ```solidity
-constructor(address _pool, address _baseToken, address _USDC) public
+constructor(address _pool, address _baseToken, address _WETH) public
 ```
 
 ### name
@@ -485,7 +484,7 @@ constructor(address _pool, address _baseToken, address _USDC) public
 function name() external view returns (string)
 ```
 
-Returns VULT/USDC Univ3TWAP
+Returns VULT/WETH Univ3TWAP
 
 ### peek
 

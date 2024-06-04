@@ -5,10 +5,10 @@ import {IOracle} from "../interfaces/IOracle.sol";
 
 contract MockOracleFail is IOracle {
     function name() external view returns (string memory) {
-        return "VULT/USDC Univ3TWAP";
+        return "VULT/ETH Univ3TWAP";
     }
 
     function peek(uint256 baseAmount) external view returns (uint256) {
-        return 10_000 * 1e6 + 1;
+        return 3 ether + 1;
     }
 }
