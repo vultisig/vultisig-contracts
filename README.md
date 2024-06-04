@@ -4,11 +4,10 @@ Vultisig token will be initially listed on UniswapV3(VULT/ETH pool).
 `Whitelist` contract will handle the initial whitelist launch and after this period, we will set `whitelist` contract address in Vultisig contract back to address(0) so tokens will be transferred without any restrictions.
 In `whitelist` contract, there's `checkWhitelist` function which checks if:
 
-- If `to` address is uniswap v3 pool which holds liquidity, then skip below validation logic
+- If `from` address is uniswap v3 pool which holds liquidity, then it means, this transfer is the `buy` action. We will apply the following WL logic. But if `to` address is `owner` address, then still ignore. Because `owner` has exclusive access like increase/decrease liquidity as well as collecting fees.
 - Token purchase is locked or not
 - Buyer is blacklisted or not
 - Buyer whitelist index is within allowed index range(starting from 1 and within 1 ~ allowedWhitelistIndex - inclusive)
-- Buyer already bought or not
 - ETH amount is greater than max address cap(default 3 ETH) or not
 
 Whitelist contract owner can:
@@ -447,7 +446,7 @@ TWAP period
 uint128 BASE_AMOUNT
 ```
 
-Will calculate 1 VULT price in USDC
+Will calculate 1 VULT price in WETH
 
 ### pool
 
@@ -455,7 +454,7 @@ Will calculate 1 VULT price in USDC
 address pool
 ```
 
-VULT/USDC pair
+VULT/WETH pair
 
 ### baseToken
 
@@ -465,18 +464,18 @@ address baseToken
 
 VULT token address
 
-### USDC
+### WETH
 
 ```solidity
-address USDC
+address WETH
 ```
 
-USDC token address
+WETH token address
 
 ### constructor
 
 ```solidity
-constructor(address _pool, address _baseToken, address _USDC) public
+constructor(address _pool, address _baseToken, address _WETH) public
 ```
 
 ### name
@@ -485,7 +484,7 @@ constructor(address _pool, address _baseToken, address _USDC) public
 function name() external view returns (string)
 ```
 
-Returns VULT/USDC Univ3TWAP
+Returns VULT/WETH Univ3TWAP
 
 ### peek
 
