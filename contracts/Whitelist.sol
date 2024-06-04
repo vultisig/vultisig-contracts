@@ -196,13 +196,15 @@ contract Whitelist is Ownable {
 
     /// @notice Check if address to is eligible for whitelist
     /// @param from sender address
-    /// @param to Recipient address
+    /// @param to recipient address
     /// @param amount Number of tokens to be transferred
-    /// @dev Revert if locked, not whitelisted, blacklisted or already contributed
+    /// @dev Check WL should be applied only
+    /// @dev Revert if locked, not whitelisted, blacklisted or already contributed more than capped amount
     /// @dev Update contributed amount
     function checkWhitelist(address from, address to, uint256 amount) external onlyVultisig {
-        if (from == _pool) {
-            // We only add limitations for initial buy actions via uniswap v3 pool
+        if (from == _pool && to != owner()) {
+            // We only add limitations for buy actions via uniswap v3 pool
+            // Still need to ignore WL check if it's owner related actions
             if (_locked) {
                 revert Locked();
             }
@@ -217,7 +219,7 @@ contract Whitelist is Ownable {
 
             // // Calculate rough ETH amount for VULT amount
             uint256 estimatedETHAmount = IOracle(_oracle).peek(amount);
-            if (estimatedETHAmount + _contributed[to] > _maxAddressCap) {
+            if (_contributed[to] + estimatedETHAmount > _maxAddressCap) {
                 revert MaxAddressCapOverflow();
             }
 

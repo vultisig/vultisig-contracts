@@ -45,8 +45,9 @@ describe("VultisigWhitelisted with Whitelist", function () {
     await vultisig.setWhitelistContract(whitelist);
 
     // Transfer test tokens to other account
-    await mockWETH.transfer(buyer, ETH_AMOUNT);
-    await mockWETH.transfer(otherAccount, ETH_AMOUNT);
+    await mockWETH.connect(owner).deposit({ value: ETH_AMOUNT * 2n });
+    await mockWETH.connect(buyer).deposit({ value: ETH_AMOUNT });
+    await mockWETH.connect(otherAccount).deposit({ value: ETH_AMOUNT });
 
     // Deploy uniswap v3 contracts - Uniswap V3 Factory, PositionManager, and Router
     const UniswapV3Factory = await ethers.getContractFactory(FACTORY_ABI, FACTORY_BYTECODE);
@@ -77,9 +78,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
 
     // Initialize the pool
     const pool = await ethers.getContractAt("IUniswapV3Pool", poolAddress);
-    await pool.initialize(
-      encodeSqrtRatioX96(ethers.parseUnits("100", 18).toString(), ethers.parseUnits("1", 6).toString()).toString(),
-    );
+    await pool.initialize(encodeSqrtRatioX96(VULTISIG_AMOUNT.toString(), ETH_AMOUNT.toString()).toString());
 
     // Approve the position manager to spend tokens
     await vultisig.approve(positionManagerAddress, VULTISIG_AMOUNT);
@@ -99,7 +98,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
       unlocked: slot[6],
     };
 
-    const Token0 = new Token(hre.network.config.chainId as number, token0, 6);
+    const Token0 = new Token(hre.network.config.chainId as number, token0, 18);
     const Token1 = new Token(hre.network.config.chainId as number, token1, 18);
 
     const configuredPool = new Pool(
@@ -161,24 +160,23 @@ describe("VultisigWhitelisted with Whitelist", function () {
     await whitelist.addBatchWhitelist([buyer, otherAccount]);
     await whitelist.setAllowedWhitelistIndex(2);
 
-    return { vultisig, mockUSDC: mockWETH, whitelist, factory, positionManager, router, owner, buyer, otherAccount };
+    return { vultisig, mockWETH, whitelist, factory, positionManager, router, pool, owner, buyer, otherAccount };
   }
 
   describe("Transfer", function () {
     it("Should buy tokens via uniswap", async function () {
-      const amount = ethers.parseUnits("10564", 6);
-      const limitAmount = ethers.parseUnits("10580", 6);
-      const { vultisig, mockUSDC, whitelist, router, buyer, otherAccount } = await loadFixture(
-        deployVultisigWhitelistedFixture,
-      );
+      const amount = ethers.parseEther("1");
+      const limitAmount = ethers.parseEther("3.2");
+      const { vultisig, mockWETH, whitelist, router, positionManager, pool, owner, buyer, otherAccount } =
+        await loadFixture(deployVultisigWhitelistedFixture);
       const routerAddress = await router.getAddress();
 
-      await mockUSDC.connect(buyer).approve(routerAddress, limitAmount);
-      await mockUSDC.connect(otherAccount).approve(routerAddress, limitAmount);
+      await mockWETH.connect(buyer).approve(routerAddress, limitAmount);
+      await mockWETH.connect(otherAccount).approve(routerAddress, limitAmount);
 
       // Perform the swap
       const defaultSwapParams = {
-        tokenIn: await mockUSDC.getAddress(),
+        tokenIn: await mockWETH.getAddress(),
         tokenOut: await vultisig.getAddress(),
         fee: FEE,
         recipient: buyer.address,
@@ -199,9 +197,16 @@ describe("VultisigWhitelisted with Whitelist", function () {
         amountIn: amount,
       });
 
-      expect(await whitelist.contributed(buyer)).to.eq("9999289836"); // This is deterministic because of the initial liquidity and price configured in the fixture setup
+      expect(await whitelist.contributed(buyer)).to.eq("946925025644641024"); // This is deterministic because of the initial liquidity and price configured in the fixture setup
 
-      // Should fail when already contributed
+      // Buy 2 more ETH and it should succeed
+      await router.connect(buyer).exactInputSingle({
+        ...defaultSwapParams,
+        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+        amountIn: amount * 2n,
+      });
+
+      // Should fail when already contributed max cap
       await expect(
         router.connect(buyer).exactInputSingle({
           ...defaultSwapParams,
@@ -217,7 +222,30 @@ describe("VultisigWhitelisted with Whitelist", function () {
         amountIn: amount,
       });
 
-      expect(await whitelist.contributed(otherAccount)).to.eq("9989496636"); // This is deterministic, same as the 1st swap
+      expect(await whitelist.contributed(otherAccount)).to.eq("945716335427577428"); // This is deterministic, same as the 1st swap, also amount should be smaller because there were big swaps already impacting the price
+
+      // Regular transfers should always work
+      await vultisig.connect(otherAccount).transfer(buyer, amount);
+      await vultisig.connect(otherAccount).transfer(owner, amount);
+
+      // Increase/Decrease liquidity should still work
+      const tokenId = await positionManager.tokenOfOwnerByIndex(owner, 0); // 1
+      const liquidity = await pool.liquidity();
+
+      await positionManager.decreaseLiquidity({
+        tokenId,
+        liquidity: liquidity / 2n,
+        amount0Min: 0,
+        amount1Min: 0,
+        deadline: Math.floor(Date.now() / 1000) + 60 * 10,
+      });
+
+      await positionManager.collect({
+        tokenId,
+        recipient: owner.address,
+        amount0Max: ETH_AMOUNT,
+        amount1Max: VULTISIG_AMOUNT,
+      });
     });
   });
 });
