@@ -15,7 +15,7 @@ contract Vultisig is ERC20, Ownable {
 
     function approveAndCall(address spender, uint256 amount, bytes calldata extraData) external returns (bool) {
         // Approve the spender to spend the tokens
-        approve(spender, amount);
+        _approve(msg.sender, spender, amount);
 
         // Call the receiveApproval function on the spender contract
         IApproveAndCallReceiver(spender).receiveApproval(msg.sender, amount, address(this), extraData);
