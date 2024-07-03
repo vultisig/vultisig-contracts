@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20, ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IApproveAndCallReceiver} from "./interfaces/IApproveAndCallReceiver.sol";
 
 /**
  * @title ERC20 based Vultisig token contract
  */
-contract Vultisig is ERC20, Ownable {
+contract Vultisig is ERC20Burnable, Ownable {
     constructor() ERC20("Vultisig Token", "VULT") {
         _mint(_msgSender(), 100_000_000 * 1e18);
     }

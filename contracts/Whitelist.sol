@@ -213,7 +213,9 @@ contract Whitelist is Ownable {
                 revert Blacklisted();
             }
 
-            if (_allowedWhitelistIndex == 0 || _whitelistIndex[to] > _allowedWhitelistIndex) {
+            if (
+                _allowedWhitelistIndex == 0 || _whitelistIndex[to] == 0 || _whitelistIndex[to] > _allowedWhitelistIndex
+            ) {
                 revert NotWhitelisted();
             }
 
