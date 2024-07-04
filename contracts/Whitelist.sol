@@ -11,13 +11,12 @@ import {IOracle} from "./interfaces/IOracle.sol";
  * - Ownable: Add whitelisted/blacklisted addresses
  * - Ownable: Set max ETH amount to buy(default 3 ETH)
  * - Ownable: Set univ3 TWAP oracle
- * - Vultisig contract `_beforeTokenTransfer` hook will call `checkWhitelist` function and this function will check if buyer is eligible
+ * - Token contract `_beforeTokenTransfer` hook will call `checkWhitelist` function and this function will check if buyer is eligible
  */
 contract Whitelist is Ownable {
     error NotWhitelisted();
     error Locked();
-    error NotVultisig();
-    error SelfWhitelistDisabled();
+    error NotToken();
     error Blacklisted();
     error MaxAddressCapOverflow();
 
@@ -25,10 +24,8 @@ contract Whitelist is Ownable {
     uint256 private _maxAddressCap;
     /// @notice Flag for locked period
     bool private _locked;
-    /// @notice Flag for self whitelist period
-    bool private _isSelfWhitelistDisabled;
-    /// @notice Vultisig token contract address
-    address private _vultisig;
+    /// @notice Token token contract address
+    address private _token;
     /// @notice Uniswap v3 TWAP oracle
     address private _oracle;
     /// @notice Uniswap v3 pool address
@@ -50,27 +47,12 @@ contract Whitelist is Ownable {
         _locked = true; // Initially, liquidity will be locked
     }
 
-    /// @notice Check if called from vultisig token contract.
-    modifier onlyVultisig() {
-        if (_msgSender() != _vultisig) {
-            revert NotVultisig();
+    /// @notice Check if called from token contract.
+    modifier onlyToken() {
+        if (_msgSender() != _token) {
+            revert NotToken();
         }
         _;
-    }
-
-    /// @notice Self-whitelist using ETH transfer
-    /// @dev reverts if whitelist is disabled
-    /// @dev reverts if address is already blacklisted
-    /// @dev ETH will be sent back to the sender
-    receive() external payable {
-        if (_isSelfWhitelistDisabled) {
-            revert SelfWhitelistDisabled();
-        }
-        if (_isBlacklisted[_msgSender()]) {
-            revert Blacklisted();
-        }
-        _addWhitelistedAddress(_msgSender());
-        payable(_msgSender()).transfer(msg.value);
     }
 
     /// @notice Returns max address cap
@@ -78,9 +60,9 @@ contract Whitelist is Ownable {
         return _maxAddressCap;
     }
 
-    /// @notice Returns vultisig address
-    function vultisig() external view returns (address) {
-        return _vultisig;
+    /// @notice Returns token address
+    function token() external view returns (address) {
+        return _token;
     }
 
     /// @notice Returns the whitelisted index. If not whitelisted, then it will be 0
@@ -93,11 +75,6 @@ contract Whitelist is Ownable {
     /// @param account The address to be checked
     function isBlacklisted(address account) external view returns (bool) {
         return _isBlacklisted[account];
-    }
-
-    /// @notice Returns if self-whitelist is allowed or not
-    function isSelfWhitelistDisabled() external view returns (bool) {
-        return _isSelfWhitelistDisabled;
     }
 
     /// @notice Returns Univ3 TWAP oracle address
@@ -143,16 +120,10 @@ contract Whitelist is Ownable {
         _maxAddressCap = newCap;
     }
 
-    /// @notice Setter for vultisig token
-    /// @param newVultisig New vultisig token address
-    function setVultisig(address newVultisig) external onlyOwner {
-        _vultisig = newVultisig;
-    }
-
-    /// @notice Setter for self-whitelist period
-    /// @param newFlag New flag for self-whitelist period
-    function setIsSelfWhitelistDisabled(bool newFlag) external onlyOwner {
-        _isSelfWhitelistDisabled = newFlag;
+    /// @notice Setter for token
+    /// @param newToken New token address
+    function setToken(address newToken) external onlyOwner {
+        _token = newToken;
     }
 
     /// @notice Setter for Univ3 TWAP oracle
@@ -201,7 +172,7 @@ contract Whitelist is Ownable {
     /// @dev Check WL should be applied only
     /// @dev Revert if locked, not whitelisted, blacklisted or already contributed more than capped amount
     /// @dev Update contributed amount
-    function checkWhitelist(address from, address to, uint256 amount) external onlyVultisig {
+    function checkWhitelist(address from, address to, uint256 amount) external onlyToken {
         if (from == _pool && to != owner()) {
             // We only add limitations for buy actions via uniswap v3 pool
             // Still need to ignore WL check if it's owner related actions

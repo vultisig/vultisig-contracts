@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Vultisig} from "../Vultisig.sol";
+import {Token} from "../Token.sol";
 import {IWhitelist} from "../interfaces/IWhitelist.sol";
 
 /**
- * @title Extended Vultisig token contract with whitelist contract interactions
+ * @title Extended token contract with whitelist contract interactions
  * @notice During whitelist period, `_beforeTokenTransfer` function will call `checkWhitelist` function of whitelist contract
  * @notice If whitelist period is ended, owner will set whitelist contract address back to address(0) and tokens will be transferred freely
  */
-contract VultisigWhitelisted is Vultisig {
+contract TokenWhitelisted is Token {
     /// @notice whitelist contract address
     address private _whitelistContract;
 

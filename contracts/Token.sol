@@ -6,11 +6,27 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IApproveAndCallReceiver} from "./interfaces/IApproveAndCallReceiver.sol";
 
 /**
- * @title ERC20 based Vultisig token contract
+ * @title ERC20Burnable based token contract
  */
-contract Vultisig is ERC20Burnable, Ownable {
-    constructor() ERC20("Vultisig Token", "VULT") {
+contract Token is ERC20Burnable, Ownable {
+    string private _name;
+    string private _ticker;
+
+    constructor() ERC20("", "") {
         _mint(_msgSender(), 100_000_000 * 1e18);
+    }
+
+    function setNameAndTicker(string calldata name_, string calldata ticker_) external onlyOwner {
+        _name = name_;
+        _ticker = ticker_;
+    }
+
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view override returns (string memory) {
+        return _ticker;
     }
 
     function approveAndCall(address spender, uint256 amount, bytes calldata extraData) external returns (bool) {
