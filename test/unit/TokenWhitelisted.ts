@@ -65,5 +65,11 @@ describe("TokenWhitelisted", function () {
       await token.setWhitelistContract(mockWhitelistFail);
       await expect(token.transfer(otherAccount.address, amount)).to.be.reverted;
     });
+
+    it("Should revert transfer when sent to the token contract", async function () {
+      const amount = ethers.parseEther("1000");
+      const { token } = await loadFixture(deployTokenWhitelistedFixture);
+      await expect(token.transfer(token, amount)).to.be.revertedWith("Cannot transfer to the token contract address");
+    });
   });
 });
