@@ -26,23 +26,23 @@ import {
 
 // Set initial price 0.01 USD -> which is around 0.0000026 ETH(assuming ETH price is 3.8k)
 const ETH_AMOUNT = ethers.parseEther("26");
-const VULTISIG_AMOUNT = ethers.parseUnits("10000000", 18);
+const TOKEN_AMOUNT = ethers.parseUnits("10000000", 18);
 const FEE = 3000;
 
-describe("VultisigWhitelisted with Whitelist", function () {
-  async function deployVultisigWhitelistedFixture() {
+describe("TokenWhitelisted with Whitelist", function () {
+  async function deployTokenWhitelistedFixture() {
     const [owner, buyer, otherAccount] = await ethers.getSigners();
 
-    const VultisigWhitelisted = await ethers.getContractFactory("VultisigWhitelisted");
+    const TokenWhitelisted = await ethers.getContractFactory("TokenWhitelisted");
     const Whitelist = await ethers.getContractFactory("Whitelist");
     const WETH = await ethers.getContractFactory("WETH9");
 
-    const vultisig = await VultisigWhitelisted.deploy();
+    const token = await TokenWhitelisted.deploy();
     const whitelist = await Whitelist.deploy();
     const mockWETH = await WETH.deploy();
 
-    await whitelist.setVultisig(vultisig);
-    await vultisig.setWhitelistContract(whitelist);
+    await whitelist.setToken(token);
+    await token.setWhitelistContract(whitelist);
 
     // Transfer test tokens to other account
     await mockWETH.connect(owner).deposit({ value: ETH_AMOUNT * 2n });
@@ -69,7 +69,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
 
     // Create the pool
     const token0 = await mockWETH.getAddress();
-    const token1 = await vultisig.getAddress();
+    const token1 = await token.getAddress();
 
     await factory.createPool(token0, token1, FEE);
     const poolAddress = await factory.getPool(token0, token1, FEE);
@@ -78,10 +78,10 @@ describe("VultisigWhitelisted with Whitelist", function () {
 
     // Initialize the pool
     const pool = await ethers.getContractAt("IUniswapV3Pool", poolAddress);
-    await pool.initialize(encodeSqrtRatioX96(VULTISIG_AMOUNT.toString(), ETH_AMOUNT.toString()).toString());
+    await pool.initialize(encodeSqrtRatioX96(TOKEN_AMOUNT.toString(), ETH_AMOUNT.toString()).toString());
 
     // Approve the position manager to spend tokens
-    await vultisig.approve(positionManagerAddress, VULTISIG_AMOUNT);
+    await token.approve(positionManagerAddress, TOKEN_AMOUNT);
     await mockWETH.approve(positionManagerAddress, ETH_AMOUNT);
 
     const slot = await pool.slot0();
@@ -117,7 +117,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
       tickUpper:
         nearestUsableTick(configuredPool.tickCurrent, configuredPool.tickSpacing) + configuredPool.tickSpacing * 2,
       amount0: ETH_AMOUNT.toString(),
-      amount1: VULTISIG_AMOUNT.toString(),
+      amount1: TOKEN_AMOUNT.toString(),
       useFullPrecision: false,
     });
 
@@ -143,7 +143,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
     expect(liquidityAfter).to.be.gt(0);
 
     // Check pool balance
-    // console.log("-> check liquidity", await mockUSDC.balanceOf(poolAddress), await vultisig.balanceOf(poolAddress));
+    // console.log("-> check liquidity", await mockUSDC.balanceOf(poolAddress), await token.balanceOf(poolAddress));
 
     // Deploy uniswap v3 oracle
     const OracleFactory = await ethers.getContractFactory("UniswapV3Oracle");
@@ -160,15 +160,15 @@ describe("VultisigWhitelisted with Whitelist", function () {
     await whitelist.addBatchWhitelist([buyer, otherAccount]);
     await whitelist.setAllowedWhitelistIndex(2);
 
-    return { vultisig, mockWETH, whitelist, factory, positionManager, router, pool, owner, buyer, otherAccount };
+    return { token, mockWETH, whitelist, factory, positionManager, router, pool, owner, buyer, otherAccount };
   }
 
   describe("Transfer", function () {
     it("Should buy tokens via uniswap", async function () {
       const amount = ethers.parseEther("1");
       const limitAmount = ethers.parseEther("3.2");
-      const { vultisig, mockWETH, whitelist, router, positionManager, pool, owner, buyer, otherAccount } =
-        await loadFixture(deployVultisigWhitelistedFixture);
+      const { token, mockWETH, whitelist, router, positionManager, pool, owner, buyer, otherAccount } =
+        await loadFixture(deployTokenWhitelistedFixture);
       const routerAddress = await router.getAddress();
 
       await mockWETH.connect(buyer).approve(routerAddress, limitAmount);
@@ -177,7 +177,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
       // Perform the swap
       const defaultSwapParams = {
         tokenIn: await mockWETH.getAddress(),
-        tokenOut: await vultisig.getAddress(),
+        tokenOut: await token.getAddress(),
         fee: FEE,
         recipient: buyer.address,
         amountOutMinimum: 0,
@@ -225,8 +225,8 @@ describe("VultisigWhitelisted with Whitelist", function () {
       expect(await whitelist.contributed(otherAccount)).to.eq("945716335427577428"); // This is deterministic, same as the 1st swap, also amount should be smaller because there were big swaps already impacting the price
 
       // Regular transfers should always work
-      await vultisig.connect(otherAccount).transfer(buyer, amount);
-      await vultisig.connect(otherAccount).transfer(owner, amount);
+      await token.connect(otherAccount).transfer(buyer, amount);
+      await token.connect(otherAccount).transfer(owner, amount);
 
       // Increase/Decrease liquidity should still work
       const tokenId = await positionManager.tokenOfOwnerByIndex(owner, 0); // 1
@@ -244,7 +244,7 @@ describe("VultisigWhitelisted with Whitelist", function () {
         tokenId,
         recipient: owner.address,
         amount0Max: ETH_AMOUNT,
-        amount1Max: VULTISIG_AMOUNT,
+        amount1Max: TOKEN_AMOUNT,
       });
     });
   });

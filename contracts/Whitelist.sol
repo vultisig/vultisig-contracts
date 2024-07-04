@@ -190,7 +190,7 @@ contract Whitelist is Ownable {
                 revert NotWhitelisted();
             }
 
-            // // Calculate rough ETH amount for VULT amount
+            // // Calculate rough ETH amount for TK amount
             uint256 estimatedETHAmount = IOracle(_oracle).peek(amount);
             if (_contributed[to] + estimatedETHAmount > _maxAddressCap) {
                 revert MaxAddressCapOverflow();
