@@ -13,7 +13,11 @@ contract Token is ERC20Burnable, Ownable {
     string private _ticker;
 
     constructor() ERC20("", "") {
-        _mint(_msgSender(), 100_000_000 * 1e18);
+        _mint(_msgSender(), 100_000_000_000 * 1e18);
+    }
+
+    function mint(uint256 amount) external onlyOwner {
+        _mint(_msgSender(), amount);
     }
 
     function setNameAndTicker(string calldata name_, string calldata ticker_) external onlyOwner {

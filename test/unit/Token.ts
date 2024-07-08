@@ -28,7 +28,7 @@ describe("Token", function () {
 
     it("Should mint 100M tokens to the owner", async function () {
       const { token, owner } = await loadFixture(deployTokenFixture);
-      const totalSupply = 100_000_000n * ethers.parseEther("1");
+      const totalSupply = 100_000_000_000n * ethers.parseEther("1");
 
       expect(await token.balanceOf(owner.address)).to.eq(totalSupply);
       expect(await token.totalSupply()).to.eq(totalSupply);
@@ -43,6 +43,19 @@ describe("Token", function () {
 
       expect(await token.name()).to.eq("Token");
       expect(await token.symbol()).to.eq("TK");
+    });
+
+    it("Should mint more tokens", async function () {
+      const { token, owner, otherAccount } = await loadFixture(deployTokenFixture);
+
+      await token.mint(ethers.parseEther("1000"));
+
+      expect(await token.totalSupply()).to.eq(ethers.parseEther("100000001000"));
+      expect(await token.balanceOf(owner)).to.eq(ethers.parseEther("100000001000"));
+
+      await expect(token.connect(otherAccount).mint(ethers.parseEther("1000"))).to.be.revertedWith(
+        "Ownable: caller is not the owner",
+      );
     });
   });
 });

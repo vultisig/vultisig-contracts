@@ -1,60 +1,78 @@
 import fs from "fs";
 import hre, { ethers } from "hardhat";
 import { abi as FACTORY_ABI } from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
-import { encodeSqrtRatioX96 } from "@uniswap/v3-sdk";
+import { computePoolAddress, encodeSqrtRatioX96 } from "@uniswap/v3-sdk";
+import { Token } from "@uniswap/sdk-core";
 import { UniswapV3Factory } from "../typechain-types";
 import { UNISWAP, USDC } from "./consts";
 
 const FEE = 10000; // 1% fee
 
 async function main() {
-  const network = hre.network.name as "mainnet" | "sepolia";
+  const network = hre.network.name as "mainnet" | "sepolia" | "base";
 
-  const VultisigWhitelisted = await ethers.getContractFactory("VultisigWhitelisted");
+  const TokenWhitelisted = await ethers.getContractFactory("TokenWhitelisted");
   const Whitelist = await ethers.getContractFactory("Whitelist");
 
-  const vultisig = await VultisigWhitelisted.deploy();
-  await vultisig.waitForDeployment();
+  const token = await TokenWhitelisted.deploy();
+  await token.waitForDeployment();
 
   const whitelist = await Whitelist.deploy();
   await whitelist.waitForDeployment();
 
-  await whitelist.setVultisig(vultisig);
-  await vultisig.setWhitelistContract(whitelist);
+  const set1Tx = await token.setWhitelistContract(whitelist);
+  await set1Tx.wait(3);
+  const set2Tx = await whitelist.setToken(token);
+  await set2Tx.wait(3);
 
-  const factory = (await ethers.getContractAt(FACTORY_ABI, UNISWAP[network].factory)) as unknown as UniswapV3Factory;
-
-  const usdc = await ethers.getContractAt("MockUSDC", USDC[network]);
+  // const factory = (await ethers.getContractAt(FACTORY_ABI, UNISWAP[network].factory)) as unknown as UniswapV3Factory;
   // Create the pool
-  const token0 = await usdc.getAddress();
-  const token1 = await vultisig.getAddress();
+  // const token0 = await usdc.getAddress(); // wETH
+  const token0 = "0x4200000000000000000000000000000000000006";
+  const token1 = await token.getAddress();
 
-  const createPoolTx = await factory.createPool(token0, token1, FEE);
-  await createPoolTx.wait();
+  console.log("--> token config", hre.network.config.chainId, token0, token1);
+  const tokenA = new Token(hre.network.config.chainId as number, token0, 18);
+  const tokenB = new Token(hre.network.config.chainId as number, token1, 18);
 
-  const poolAddress = await factory.getPool(token0, token1, FEE);
-  console.log({ poolAddress });
+  // const createPoolTx = await factory.createPool(token0, token1, FEE);
+  // await createPoolTx.wait();
+
+  // const poolAddress = await factory.getPool(token0, token1, FEE);
+  const poolAddress = computePoolAddress({
+    factoryAddress: UNISWAP[network].factory,
+    tokenA,
+    tokenB,
+    fee: FEE,
+  });
+  const poolAddress1 = computePoolAddress({
+    factoryAddress: UNISWAP[network].factory,
+    tokenA: tokenB,
+    tokenB: tokenA,
+    fee: FEE,
+  });
+  console.log({ poolAddress, poolAddress1 });
 
   await whitelist.setPool(poolAddress);
 
   // Initialize the pool - using 0.01 initial price
-  const pool = await ethers.getContractAt("IUniswapV3Pool", poolAddress);
-  await pool.initialize(
-    encodeSqrtRatioX96(ethers.parseUnits("100", 18).toString(), ethers.parseUnits("1", 6).toString()).toString(),
-  );
+  // const pool = await ethers.getContractAt("IUniswapV3Pool", poolAddress);
+  // await pool.initialize(
+  //   encodeSqrtRatioX96(ethers.parseUnits("100", 18).toString(), ethers.parseUnits("1", 6).toString()).toString(),
+  // );
 
   // Deploy uniswap v3 oracle
   const OracleFactory = await ethers.getContractFactory("UniswapV3Oracle");
   const oracle = await OracleFactory.deploy(poolAddress, token1, token0);
   await oracle.waitForDeployment();
 
-  const priceTx = await pool.increaseObservationCardinalityNext(10);
-  await priceTx.wait();
+  // const priceTx = await pool.increaseObservationCardinalityNext(10);
+  // await priceTx.wait();
 
   await whitelist.setOracle(oracle);
 
   const deployedContracts = {
-    vultisig: await vultisig.getAddress(),
+    token: await token.getAddress(),
     whitelist: await whitelist.getAddress(),
     poolAddress,
     oracle: await oracle.getAddress(),
