@@ -13,6 +13,8 @@ contract TokenWhitelisted is Token {
     /// @notice whitelist contract address
     address private _whitelistContract;
 
+    constructor(address _lzEndpoint) Token(_lzEndpoint) {}
+
     /// @notice Returns current whitelist contract address
     function whitelistContract() external view returns (address) {
         return _whitelistContract;
