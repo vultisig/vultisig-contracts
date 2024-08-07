@@ -2,18 +2,43 @@
 pragma solidity ^0.8.24;
 
 import {ERC20, ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ERC1363} from "erc-payable-token/contracts/token/ERC1363/ERC1363.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IApproveAndCallReceiver} from "./interfaces/IApproveAndCallReceiver.sol";
 
 /**
  * @title ERC20Burnable based token contract
  */
-contract Token is ERC20Burnable, Ownable {
+contract Token is ERC1363, Ownable {
     string private _name;
     string private _ticker;
 
     constructor() ERC20("", "") {
         _mint(_msgSender(), 100_000_000_000 * 1e18);
+    }
+
+    /**
+     * @dev Destroys `amount` tokens from the caller.
+     *
+     * See {ERC20-_burn}.
+     */
+    function burn(uint256 amount) external {
+        _burn(_msgSender(), amount);
+    }
+
+    /**
+     * @dev Destroys `amount` tokens from `account`, deducting from the caller's
+     * allowance.
+     *
+     * See {ERC20-_burn} and {ERC20-allowance}.
+     *
+     * Requirements:
+     *
+     * - the caller must have allowance for ``accounts``'s tokens of at least
+     * `amount`.
+     */
+    function burnFrom(address account, uint256 amount) external {
+        _spendAllowance(account, _msgSender(), amount);
+        _burn(account, amount);
     }
 
     function mint(uint256 amount) external onlyOwner {
@@ -31,15 +56,5 @@ contract Token is ERC20Burnable, Ownable {
 
     function symbol() public view override returns (string memory) {
         return _ticker;
-    }
-
-    function approveAndCall(address spender, uint256 amount, bytes calldata extraData) external returns (bool) {
-        // Approve the spender to spend the tokens
-        _approve(msg.sender, spender, amount);
-
-        // Call the receiveApproval function on the spender contract
-        IApproveAndCallReceiver(spender).receiveApproval(msg.sender, amount, address(this), extraData);
-
-        return true;
     }
 }
