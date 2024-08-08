@@ -18,7 +18,7 @@ contract Token is OFT, IERC1363 {
 
     error BridgeLocked();
 
-    constructor(address _lzEndpoint) OFT("", "", _lzEndpoint) {
+    constructor(string memory name_, string memory ticker_, address _lzEndpoint) OFT(name_, ticker_, _lzEndpoint) {
         _mint(_msgSender(), 100_000_000_000 * 1e18);
     }
 
