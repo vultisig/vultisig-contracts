@@ -3,7 +3,15 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-erc1820"; // ERC777 is interacting with ERC1820 registry
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  },
   networks: {
     sepolia: {
       url: `https://eth-sepolia.g.alchemy.com/v2/${vars.get("VULTISIG_ALCHEMY_KEY")}`,

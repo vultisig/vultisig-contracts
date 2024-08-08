@@ -7,7 +7,7 @@ describe("Token", function () {
     const [owner, otherAccount] = await ethers.getSigners();
 
     const Token = await ethers.getContractFactory("Token");
-    const token = await Token.deploy();
+    const token = await Token.deploy("", "", ethers.ZeroAddress);
 
     return { token, owner, otherAccount };
   }
@@ -32,6 +32,20 @@ describe("Token", function () {
 
       expect(await token.balanceOf(owner.address)).to.eq(totalSupply);
       expect(await token.totalSupply()).to.eq(totalSupply);
+    });
+
+    it("Should burn token from owner", async function () {
+      const { token, owner } = await loadFixture(deployTokenFixture);
+      const totalSupply = 100_000_000_000n * ethers.parseEther("1");
+      const burnSupply = totalSupply / 10n;
+
+      expect(await token.balanceOf(owner.address)).to.eq(totalSupply);
+      expect(await token.totalSupply()).to.eq(totalSupply);
+
+      await token.burn(burnSupply);
+
+      expect(await token.balanceOf(owner.address)).to.eq(totalSupply - burnSupply);
+      expect(await token.totalSupply()).to.eq(totalSupply - burnSupply);
     });
   });
 

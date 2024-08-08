@@ -14,7 +14,7 @@ async function main() {
   const TokenWhitelisted = await ethers.getContractFactory("TokenWhitelisted");
   const Whitelist = await ethers.getContractFactory("Whitelist");
 
-  const token = await TokenWhitelisted.deploy();
+  const token = await TokenWhitelisted.deploy(ethers.ZeroAddress);
   await token.waitForDeployment();
 
   const whitelist = await Whitelist.deploy();
